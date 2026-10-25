@@ -1,0 +1,25 @@
+.venv/
+__pycache__/
+sandbox/prefix-pristine/
+sandbox/prefix-work/
+sandbox/exchange/
+re/*.exe
+re/work/
+re/*.strings.txt
+re/.venv-re/
+re/ghidra-proj/
+re/ghidramcp-dl/
+re/decomp/
+re/test/
+re/*.log
+
+# never publish: proprietary binaries / decompiled code / local setup
+re/
+tools/winpy-dl/
+.mcp.json
+sandbox/
+*.exe
+*.dll
+*.packed.exe
+site/
+dist/

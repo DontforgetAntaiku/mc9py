@@ -1,0 +1,71 @@
+site_name: mc9py
+site_description: Python scripting layer for Micro-Cap 9 - run analyses, read results, take native screenshots, build schematics from code.
+site_url: https://dontforgetantaiku.github.io/mc9py/
+repo_url: https://github.com/DontforgetAntaiku/mc9py
+repo_name: DontforgetAntaiku/mc9py
+edit_uri: edit/main/docs/
+copyright: MIT licensed. Micro-Cap is a trademark of Spectrum Software; this project is not affiliated with it.
+
+theme:
+  name: material
+  features: [navigation.sections, navigation.top, content.code.copy, content.action.edit, search.suggest, toc.follow]
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle: { icon: material/weather-night, name: Dark mode }
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle: { icon: material/weather-sunny, name: Light mode }
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            show_source: false
+            docstring_style: google
+            show_root_heading: true
+            members_order: source
+            show_signature_annotations: false
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed: { alternate_style: true }
+  - pymdownx.snippets: { base_path: ["."], check_paths: true }
+  - tables
+  - toc: { permalink: true }
+  - attr_list
+  - md_in_html
+
+nav:
+  - Home: index.md
+  - Getting started:
+      - Install on Linux: getting-started/install-linux.md
+      - Install on Windows: getting-started/install-windows.md
+      - Quickstart: getting-started/quickstart.md
+  - Guide:
+      - Circuits: guide/circuits.md
+      - Analyses: guide/analyses.md
+      - Results and data: guide/results.md
+      - Cursors and screenshots: guide/screenshots.md
+      - Measurements: guide/measurements.md
+      - Lab cookbook: guide/cookbook.md
+      - Building schematics: guide/schematics.md
+      - Automatic placement: guide/autoplace.md
+      - MCP server (AI assistants): guide/mcp.md
+      - Configuration: guide/configuration.md
+  - How it works:
+      - Architecture: internals/architecture.md
+      - MC9 file format and geometry: internals/mc9-notes.md
+      - The Windows backend: internals/windows-backend.md
+      - Supporting other MC9 editions: internals/calibration.md
+  - Reference:
+      - Python API: reference/api.md
+      - Command line: reference/cli.md
+  - FAQ and gotchas: faq.md
+  - Contributing: contributing.md
+  - Changelog: changelog.md

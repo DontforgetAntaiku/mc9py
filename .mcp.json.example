@@ -1,0 +1,5 @@
+{
+  "mcpServers": {
+    "microcap9": { "command": "mc9", "args": ["mcp"] }
+  }
+}
