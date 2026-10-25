@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]
-authors = [{ name = "The mc9py authors" }]
+authors = [{ name = "DontforgetAntaiku" }]
 keywords = ["micro-cap", "microcap", "mc9", "spice", "circuit-simulation", "electronics", "automation", "mcp", "education"]
 classifiers = [
     "Development Status :: 4 - Beta",

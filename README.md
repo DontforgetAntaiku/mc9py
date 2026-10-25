@@ -226,7 +226,7 @@ Please **never** commit MC9 binaries, licence keys, decompiled code or other peo
 
 ## License
 
-[MIT](LICENSE) © 2026 The mc9py authors.
+[MIT](LICENSE) © 2026 DontforgetAntaiku.
 
 `mc9py` is an independent project. **Micro-Cap® is a trademark of Spectrum Software**; this project is not affiliated with, endorsed
 by or sponsored by Spectrum Software, and it **does not contain or distribute MC9** - you need your own licensed copy and must follow its
