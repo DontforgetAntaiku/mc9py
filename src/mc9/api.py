@@ -335,7 +335,11 @@ class Circuit:
         return dict(ln.split("=", 1) for ln in lim.lines if "=" in ln)
 
     def curves(self, analysis: str, *exprs) -> list[dict]:
-        """Replace an analysis' curves. Items: 'v(Ua)', ('F','db(v(Ua))') or dict(y=,x=,plot=,xrng=,yrng=)."""
+        """Replace an analysis' curves. Items: 'v(Ua)', ('F','db(v(Ua))') or a dict:
+
+        ``dict(y="v(out)", x="T", plot=2, xrange=(0, 1e-3), yrange=(-1, 1), ylog=False, xgrid=1e-4, color="#FF0000")``
+        (``plot`` groups curves into stacked plots; ``xrange="auto"`` autoscales). A frequency-domain curve in a
+        transient analysis is an FFT plot: ``("F", "db(mag(fft(v(out))))")``."""
         name = _LIMIT_NAME.get(analysis.lower(), analysis)
         spec = []
         for e in exprs:

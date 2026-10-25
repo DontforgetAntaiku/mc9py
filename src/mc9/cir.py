@@ -201,6 +201,18 @@ class Cir:
             s.set("AliasID", str(n))
             s.set("XExp", c.get("x", default_x))
             s.set("YExp", c["y"])
+            for axis in ("x", "y"):                              # scale: (low, high) or "auto"; log scale; grid spacing
+                rng = c.get(f"{axis}range")
+                if rng is not None:
+                    s.set(f"{axis.upper()}Rng", "AutoAlways" if rng == "auto" else f"{rng[1]:g},{rng[0]:g}")
+                if c.get(f"{axis}grid") is not None:
+                    s.set(f"Range Grid {axis.upper()}", f"{c[f'{axis}grid']:g}")
+                if f"{axis}log" in c:
+                    opts = [o for o in (s.get("Options") or "").split(",") if o and o != f"LINEAR{axis.upper()}"]
+                    s.set("Options", ",".join(opts + ([] if c[f"{axis}log"] else [f"LINEAR{axis.upper()}"])))
+            if c.get("color"):
+                s.set("Line Color", c["color"])
+                s.set("Text Color", c["color"])
             new.append(s)
         pos = idx[0]
         for i in reversed(idx):
