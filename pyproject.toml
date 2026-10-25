@@ -48,9 +48,11 @@ Changelog = "https://github.com/DontforgetAntaiku/mc9py/blob/main/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mc9"]
+artifacts = ["src/mc9/_native/*"]          # mc9hook.dll & co, built by `make -C native package` (gitignored)
 
 [tool.hatch.build.targets.sdist]
-include = ["src/mc9", "tests", "examples", "docs", "README.md", "LICENSE", "CHANGELOG.md", "pyproject.toml", "mkdocs.yml"]
+artifacts = ["src/mc9/_native/*"]
+include = ["src/mc9", "native", "tests", "examples", "docs", "README.md", "LICENSE", "CHANGELOG.md", "pyproject.toml", "mkdocs.yml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

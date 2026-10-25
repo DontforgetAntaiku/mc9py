@@ -72,6 +72,11 @@ def cmd_doctor(_a) -> int:
         good &= _ok(True, "Pillow")
     except ImportError:
         good &= _ok(False, "Pillow", "pip install pillow")
+    from . import native
+    try:
+        _ok(True, f"native engine: mc9hook.dll in {native.native_dir()}")
+    except native.HookError as e:
+        _ok(False, "native engine (mc9hook.dll)", f"{e}; the click engine still works")
     if sys.platform == "win32":
         from .backends.windows import find_mc9
         try:

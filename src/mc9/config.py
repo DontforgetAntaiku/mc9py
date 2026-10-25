@@ -13,7 +13,7 @@ class Config:
     start_timeout: int = 120       # seconds to wait for MC9 to start
     run_timeout: int = 120         # default seconds to wait for an analysis to finish
     maximize_plots: bool = True    # open analysis windows maximized so tall plot stacks are not cut off
-    native: bool = False           # load mc9hook.dll into MC9 and use it instead of menu clicks where it can (experimental)
+    engine: str = "auto"           # "auto" | "native" (mc9hook.dll inside MC9: direct commands) | "clicks" (mouse/keyboard only)
     dialog_wait: float = 1.0       # pause after opening MC9 dialogs (raise on a slow machine)
 
 

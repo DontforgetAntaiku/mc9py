@@ -23,3 +23,6 @@ sandbox/
 *.packed.exe
 site/
 dist/
+
+# built in CI and shipped inside the wheel
+src/mc9/_native/

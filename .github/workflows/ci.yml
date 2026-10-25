@@ -27,3 +27,14 @@ jobs:
         with: { python-version: "3.12" }
       - run: python -m pip install ruff
       - run: ruff check src tests
+
+  native:
+    name: build mc9hook.dll
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y gcc-mingw-w64-i686
+      - run: make -C native package
+      - run: file src/mc9/_native/mc9hook.dll | grep -q "PE32 executable (DLL)"
+      - uses: actions/upload-artifact@v4
+        with: { name: mc9hook, path: src/mc9/_native/ }
