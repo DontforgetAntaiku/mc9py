@@ -70,3 +70,46 @@ def test_inverting_amplifier_gain_is_20_db():
         assert r.value_at("db(v(out)/v(in))", 1000) == pytest.approx(20.0, abs=0.05)
     finally:
         c.close()
+
+
+def _rc():
+    from mc9 import library
+    return library.rc_lowpass().build("it_rc")
+
+
+def test_stepping_runs_and_parameters():
+    c = _rc()
+    try:
+        c.step("R1", "1k", "3k", "1k", analysis="ac")
+        r = c.ac(10, 1e5, 201, ["db(v(out))"])
+        assert [round(run.params["R1"]) for run in r.runs] == [1000, 2000, 3000]
+        f3db = [run.cross("db(v(out))", -3.0103)[0] for run in r.runs]
+        assert f3db[0] == pytest.approx(1000, rel=0.02) and f3db[2] == pytest.approx(333, rel=0.02)
+    finally:
+        c.close()
+
+
+def test_temperature_list_and_monte_carlo():
+    c = _rc()
+    try:
+        r = c.dc("V1", 0, 1, 0.5, curves=["v(out)"], temp=[0, 25, 75])
+        assert [run.params["Temperature"] for run in r.runs] == [0, 25, 75]
+        c.tolerance("R1", lot="10%")
+        c.monte_carlo(runs=4, seed=1, analysis="dc")
+        r = c.dc("V1", 0, 1, 0.5, curves=["v(out)"], temp=25)       # the temperature list is a sticky setting
+        assert len(r.runs) == 4
+        r = c.dc("V1", 0, 1, 0.5, curves=["v(out)"], temp=[0, 75])  # temperatures x Monte Carlo cases
+        assert len(r.runs) == 8
+    finally:
+        c.close()
+
+
+def test_optimizer_needs_native(engine):
+    if engine != "native":
+        pytest.skip("the optimizer is driven through the DLL")
+    c = _rc()
+    try:
+        res = c.optimize({"R1": (100, 5000)}, [("equals", "Y_Level(db(v(out)),1,1,2000)", -3.0103)], analysis="ac")
+        assert float(res["params"]["R1"]["value"]) == pytest.approx(500, rel=0.01)
+    finally:
+        c.close()

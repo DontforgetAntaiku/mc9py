@@ -6,6 +6,7 @@ Settings live in `mc9.config` (set them before opening circuits) and in environm
 import mc9
 mc9.config.maximize_plots = True
 mc9.config.run_timeout = 300          # slow machine / long transients
+mc9.config.engine = "auto"            # "auto" (native, falling back to clicks) | "native" | "clicks"
 ```
 
 | Setting | Default | Meaning |

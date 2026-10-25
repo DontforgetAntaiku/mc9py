@@ -115,15 +115,17 @@ More in the [Windows page](https://dontforgetantaiku.github.io/mc9py/getting-sta
 | Area | Features |
 |---|---|
 | **Circuits** | open (copy) `.cir` files · list / get / set part values · raw `[Limits]` and curve editing · export to a *new* file · display toggles (voltages/currents/power) |
-| **Analyses** | operating point · AC (log sweep) · transient (steady-state windows) · DC sweep (temperature lists, several runs) · Distortion window · Dynamic DC · Dynamic AC phasors |
+| **Analyses** | operating point · AC (log sweep) · transient (steady-state windows) · DC sweep · Distortion window · Dynamic DC · Dynamic AC phasors · FFT plots |
+| **Many runs** | **stepping** (linear / log / list, component or model parameters, nested or together) · **temperature lists** · **Monte Carlo** (tolerances, runs, distribution, seed) · every run keeps its parameters (`run.params`, `result.select(R1=2k)`) · the **optimizer** (Powell, up to 4 parts / 4 goals) |
 | **Data** | `Result`/`Run`/`OP`: `value_at`, `cross`, `peak`, `trough`, `amplitude`, `mean`, CSV export · device tables (`IC`, `GM`, `RPI`, power ...) · SI-suffix parsing, `N/A` handling |
 | **Pictures** | plot / schematic / window screenshots · tight automatic crops · cursors placed at exact X values with MC9's own cursor table · maximized plot windows · failure screenshots with MC9's error dialog |
 | **Measurements** | `bandwidth` (-3 dB, low/high/band-pass) · `gain_at` · `rin` · `rout` (load removal) · `thd` (steady-state DFT) · `solve` (find the part value that hits a target) |
 | **Schematics** | `Schematic` builder (catalog: R C L V VB I D Q QP M OPAMP GND) · automatic label placement · `check()` / `audit()` / `pin_nets()` · auto centre & zoom · T-junction and node-name handling |
 | **Auto-placement** | SPICE-like `Netlist` → backbone + branches + rail/ground buses, label fallback to avoid crossings · verified net-for-net against your netlist · starter circuits in `mc9.library` |
-| **Platforms** | Linux: sandboxed Wine + Xvfb · Windows: Win32 API (language independent) |
-| **AI** | MCP server with 24 tools (files, analyses, cursors, screenshots, measurements, `build_netlist`, `build_schematic`) |
-| **Tooling** | `mc9 setup / doctor / reset / mcp` · 37 offline tests (run on Linux, Windows, macOS CI) · opt-in MC9 integration tests · MkDocs site · GitHub Actions CI |
+| **Engines** | **native** (default): a small DLL inside MC9 posts MC9's own commands and fills its dialogs - no mouse, no keyboard, no screen coordinates · **clicks**: mouse and keyboard only, used if the DLL cannot start (separate engine, never mixed) |
+| **Platforms** | Linux: sandboxed Wine + Xvfb · Windows: native MC9 (language independent) |
+| **AI** | MCP server with 30 tools (files, analyses, stepping, Monte Carlo, optimizer, cursors, screenshots, measurements, `build_netlist`, `build_schematic`) |
+| **Tooling** | `mc9 setup / doctor / reset / mcp` · 44 offline tests (run on Linux, Windows, macOS CI) · opt-in MC9 integration tests · MkDocs site · GitHub Actions CI |
 
 <p align="center">
   <img src="docs/assets/ce_schematic_ac.png" width="49%" alt="Dynamic AC phasors">

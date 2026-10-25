@@ -1,8 +1,12 @@
 # Changelog
 
 ## Unreleased
-- Experimental native hook (`native/`, `config.native`): `mc9hook.dll` finds MC9's functions at run time (byte patterns, string anchors,
-  MFC message maps) and lets the drivers post commands directly instead of clicking menus.
+- **Two engines.** `mc9.config.engine`: *native* (default; `mc9hook.dll` inside MC9 posts MC9's own commands and fills its dialogs - no mouse,
+  keyboard or screen coordinates) and *clicks* (the old mouse/keyboard drivers, used only if the DLL cannot start). The prebuilt DLL is shipped in the wheel.
+- **Offset auto-search** inside MC9 (byte patterns, string anchors, MFC message maps), `tools/sigmaker.py` for other builds.
+- **Many runs:** `Circuit.step`, `stepping_mode`, `clear_steps` (written as MC9's `[Stepping]` sections), temperature lists, Monte Carlo
+  (`tolerance`, `monte_carlo`, `model`), run parameters (`run.params`, `result.select`), the optimizer (`optimize`, native engine).
+- Curve options (`xrange`, `yrange`, `xlog`, `ylog`, grid, colour), FFT plots; six new MCP tools; `mc9 doctor` checks the DLL.
 
 ## 0.2.1 - 2026-10-25
 - Python 3.14 support (CI and classifiers); `python -m mc9`; install instructions now use PyPI.

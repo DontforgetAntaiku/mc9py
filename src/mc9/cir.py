@@ -172,6 +172,22 @@ class Cir:
         pos = self._insert_point()
         self.sections[pos:pos] = new
 
+    def set_optimize(self, analysis: str, params: list, goals: list, method: str = "Standard_Powell") -> None:
+        """Fill the analysis' [Optimize] section: params = [(name, low, high, step)], goals = [(kind, function, to)]."""
+        sec = next((s for s in self.sections if s.name == "Optimize" and (s.get("Analysis") or "").lower() == analysis.lower()), None)
+        if sec is None:                                   # circuits that were never saved by MC9 have none
+            sec = Section("Optimize", [f"Analysis={analysis}", "Format=3", "Method=Standard_Powell", "Update_Plot=False"])
+            self.sections.insert(self._insert_point(), sec)
+        keep = [ln for ln in sec.lines if ln.split("=", 1)[0].split("[")[0] not in ("Find", "Low", "High", "Step", "That", "Function", "To")]
+        lines = []
+        for i, (name, lo, hi, step) in enumerate(params):
+            lines += [f"Find[{i}]={name}", f"Low[{i}]={lo}", f"High[{i}]={hi}", f"Step[{i}]={step}"]
+        for i, (kind, func, to) in enumerate(goals):
+            lines += [f"That[{i}]={kind}", f"Function[{i}]={func}"] + ([f"To[{i}]={to}"] if to is not None else [])
+        head = [ln for ln in keep if ln.split("=", 1)[0] in ("Analysis", "Format")]
+        tail = [ln for ln in keep if ln not in head and not ln.startswith("Method=")]
+        sec.lines = head + lines + [f"Method={method}"] + tail
+
     def monte_carlo(self, analysis: str) -> Section:
         for s in self.sections:
             if s.name == "Monte Carlo Options" and (s.get("Analysis") or "").lower() == analysis.lower():

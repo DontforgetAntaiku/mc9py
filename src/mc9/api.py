@@ -19,6 +19,7 @@ import warnings
 from pathlib import Path
 from typing import Iterable, Sequence
 
+from . import catalog
 from . import cir as cirmod
 from . import results as resmod
 from . import ui, workspace
@@ -260,6 +261,35 @@ class Circuit:
         """``True``: every combination (nested loops); ``False``: all variables change simultaneously."""
         self._nested = nested
         self._dirty = True
+
+    def optimize(self, params: dict, goals: Sequence, analysis: str = "ac", method: str = "standard",
+                 timeout: float = 600) -> dict:
+        """Let MC9's Powell optimizer tune up to 4 parts to up to 4 goals (native engine); the result is applied to the circuit.
+
+        ``c.optimize({"R1": (50, 1e3), "C1": (0.5e-9, 2e-9)}, [("equals", "Y_Level(db(v(out)),1,1,1e6)", -3)], analysis="ac")``
+        Goal kinds: "equals" (value is the target), "minimize", "maximize" (no target). Part values are searched between the limits
+        (an optional third number is the step). Returns ``{"params": {"R1": {"start": .., "value": ..}}, "goals": [...]}``.
+        """
+        analysis = analysis.lower()
+        kinds = {"equals": "Equates", "equate": "Equates", "minimize": "Minimizes", "maximize": "Maximizes"}
+        plist = [(n, _num(r[0]), _num(r[1]), _num(r[2] if len(r) > 2 else (r[1] - r[0]) / 10 if not isinstance(r[0], str) else r[0]))
+                 for n, r in params.items()]
+        glist = []
+        for g in goals:
+            kind, func = kinds[g[0].lower()], g[1]
+            glist.append((kind, func, _num(g[2]) if len(g) > 2 and g[2] is not None and kind == "Equates" else None))
+        if not 1 <= len(plist) <= 4 or not 1 <= len(glist) <= 4:
+            raise ValueError("the optimizer takes 1-4 parameters and 1-4 goals")
+        self._cir.set_optimize(_LIMIT_NAME[analysis], plist, glist, "Standard_Powell" if method == "standard" else "Stepping_Powell")
+        self._dirty = True
+        m = self._session()
+        self._to_schematic(m)
+        res = m.optimize(analysis, timeout)
+        for name, v in res["params"].items():                       # keep the file in step with what MC9 now holds
+            val = resmod.parse_value(v["value"].split()[0]) if v["value"].strip() else None
+            if val is not None and name in {c["attrs"].get("PART") for c in self._cir.components()}:
+                self.set(name, catalog.VALUE_ATTR.get(self._cir.find_part(name)["type"], "VALUE"), val)
+        return res
 
     # ---- models, tolerances, Monte Carlo -------------------------------------------------------
     def model(self, *lines: str) -> None:

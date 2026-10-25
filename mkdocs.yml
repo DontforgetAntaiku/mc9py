@@ -53,6 +53,7 @@ nav:
       - Results and data: guide/results.md
       - Cursors and screenshots: guide/screenshots.md
       - Measurements: guide/measurements.md
+      - Stepping, Monte Carlo, optimizer: guide/many-runs.md
       - Lab cookbook: guide/cookbook.md
       - Building schematics: guide/schematics.md
       - Automatic placement: guide/autoplace.md
@@ -62,7 +63,7 @@ nav:
       - Architecture: internals/architecture.md
       - MC9 file format and geometry: internals/mc9-notes.md
       - The Windows backend: internals/windows-backend.md
-      - The native hook (experimental): internals/native-hook.md
+      - The two engines (native DLL and clicks): internals/native-hook.md
       - Supporting other MC9 editions: internals/calibration.md
   - Reference:
       - Python API: reference/api.md

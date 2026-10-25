@@ -86,10 +86,10 @@ def install(dest: str | os.PathLike | None = None) -> Path:
 # For another build they are learned once by pressing the accelerators (`Commands.calibrate`) and kept in settings.json.
 KNOWN_IDS = {
     "f9a291ea": {"transient": 17622, "ac": 17623, "dc": 17624, "dynamic_dc": 17629, "dynamic_ac": 17628, "distortion": 17630,
-                 "run": 16068, "exit": 17152, "cursors": 17184, "select": 17561},
+                 "run": 16068, "exit": 17152, "cursors": 17184, "select": 17561, "optimize": 18899},
 }
 ACCELERATORS = {"transient": "alt+1", "ac": "alt+2", "dc": "alt+3", "dynamic_dc": "alt+4", "dynamic_ac": "alt+5",
-                "distortion": "alt+8", "run": "F2", "exit": "F3", "cursors": "ctrl+shift+x"}
+                "distortion": "alt+8", "run": "F2", "exit": "F3", "cursors": "ctrl+shift+x", "optimize": "ctrl+F11"}
 
 
 class Commands:

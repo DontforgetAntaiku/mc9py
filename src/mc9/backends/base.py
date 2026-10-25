@@ -31,6 +31,10 @@ class Driver(ABC):
     def exit_analysis(self) -> None:
         """Close the analysis window, back to the schematic."""
 
+    def optimize(self, timeout: float) -> dict:
+        """Open MC9's Optimizer (settings come from the file's [Optimize] section), run it, apply the result."""
+        raise NotImplementedError("the optimizer needs the native engine (mc9.config.engine = 'native')")
+
     @abstractmethod
     def prepare_capture(self, schematic: bool) -> None:
         """Remove hover artefacts before a screenshot (leave placement mode, park the mouse)."""

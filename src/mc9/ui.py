@@ -56,6 +56,11 @@ class MC9:
         self.d.confirm_dynamic("dynamic_ac")
         self.mode = "dynamic_ac"
 
+    def optimize(self, analysis: str, timeout: float = 600) -> dict:
+        """Run the analysis once, then MC9's optimizer on it (native engine); returns what the optimizer reports."""
+        self.run(analysis)
+        return self.d.optimize(timeout)
+
     # ---- plot tools
     def cursors(self, left: str, right: str | None = None) -> None:
         """MC9 measurement cursors at X values (SI suffixes ok: 23.01k)."""

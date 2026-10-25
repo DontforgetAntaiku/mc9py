@@ -25,7 +25,7 @@ def _summary(r: api.Result, max_rows: int) -> dict:
     out = []
     for run in r.runs:
         step = max(1, len(run) // max_rows)
-        out.append({"label": run.label, "columns": run.columns, "n_rows": len(run),
+        out.append({"label": run.label, "params": run.params, "columns": run.columns, "n_rows": len(run),
                     "rows": [[run._cols[c][i] for c in run.columns] for i in range(0, len(run), step)]})
     return {"analysis": r.analysis, "runs": out}
 
@@ -234,6 +234,60 @@ def build_netlist(name: str, parts: list[dict], labels: str = "dc", mode: str = 
             warnings.simplefilter("always")
             sch.build(name, labels=labels)
         return {"circuit": name, "warnings": [str(x.message) for x in w], "notes": sch.notes, "zoom": sch.zoom}
+
+
+# ---- stepping, tolerances, Monte Carlo, optimizer -------------------------------------------------
+@mcp.tool()
+def step_parameter(name: str, what: str, start: str, stop: str | None = None, step: str | None = None,
+                   param: str | None = None, method: str | None = None, kind: str = "component",
+                   analysis: str | None = None) -> str:
+    """Add a stepped variable: later analyses run once per value ("runs" with their "params").
+    Linear: what="R1", start="1k", stop="3k", step="1k". Log: method="log" (step = multiplier). List: start="1n,10n,100n".
+    Model parameter: kind="model", what="BF420", param="BF". analysis: transient|ac|dc|distortion (default all)."""
+    with _LOCK:
+        _c(name).step(what, start, stop, step, param=param, method=method, kind=kind, analysis=analysis)
+        return "ok"
+
+
+@mcp.tool()
+def clear_steps(name: str) -> str:
+    """Switch stepping off."""
+    with _LOCK:
+        _c(name).clear_steps()
+        return "ok"
+
+
+@mcp.tool()
+def set_tolerance(name: str, part: str, lot: str | None = None, dev: str | None = None) -> str:
+    """Tolerance of a resistor/capacitor/inductor for Monte Carlo, e.g. lot="5%" (lot-wide) and/or dev="1%" (per device)."""
+    with _LOCK:
+        _c(name).tolerance(part, lot=lot, dev=dev)
+        return "ok"
+
+
+@mcp.tool()
+def monte_carlo(name: str, runs: int = 10, distribution: str = "normal", seed: int = 0, analysis: str | None = None,
+                on: bool = True) -> str:
+    """Monte Carlo on/off. Each analysis then returns `runs` runs (Case=1 is the nominal one). distribution: normal | worst case."""
+    with _LOCK:
+        _c(name).monte_carlo(runs, distribution, seed, analysis=analysis, on=on)
+        return "ok"
+
+
+@mcp.tool()
+def add_model_text(name: str, lines: list[str]) -> str:
+    """Add netlist text (.MODEL / .DEFINE / .PARAMETERS ...) to the circuit's text page."""
+    with _LOCK:
+        _c(name).model(*lines)
+        return "ok"
+
+
+@mcp.tool()
+def optimize(name: str, params: dict[str, list[float]], goals: list[list], analysis: str = "ac") -> dict:
+    """MC9's optimizer (native engine): params {"R1": [low, high]}, goals [["equals", "Y_Level(db(v(out)),1,1,2000)", -3.0103]]
+    (kinds: equals | minimize | maximize). At most 4 of each. The found values are applied to the circuit."""
+    with _LOCK:
+        return _c(name).optimize({k: tuple(v) for k, v in params.items()}, [tuple(g) for g in goals], analysis=analysis)
 
 
 @mcp.tool()

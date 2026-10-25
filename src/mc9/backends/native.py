@@ -34,6 +34,11 @@ done
 '''
 
 
+# Control ids of the Optimizer dialog (first row; the next rows follow by +1) in the calibrated MC9 build.
+OPT = {"run": 18939, "stop": 18969, "apply": 18975, "close": 8, "p_name": 18905, "p_current": 18921, "p_best": 18940,
+       "g_expr": 18929, "g_to": 18964, "g_current": 18933, "g_best": 18944, "g_error": 18970}
+
+
 def _parse(text: str) -> list[list[str]]:
     return [ln.split("|") for ln in text.splitlines() if ln.strip()]
 
@@ -152,6 +157,52 @@ class NativeDriver(Driver):
         if dlg is None and self._dyn is None and key in ("dynamic_dc", "dynamic_ac"):
             raise TimeoutError("the Dynamic DC/AC dialog did not appear")
         time.sleep(0.5)
+
+    def optimize(self, timeout: float) -> dict:
+        before = set(self._dialogs())
+        self.cmd.post("optimize")
+        dlg = self._wait_new_dialog(before, 15)
+        if dlg is None:
+            raise TimeoutError("MC9's optimizer dialog did not appear")
+        time.sleep(1)
+
+        def ctl() -> dict:
+            return {c["id"]: c for c in self._children(dlg) if c["id"] not in (0, 65535)}
+
+        def text(c: dict, cid: int) -> str:
+            return self.hook.send("gettext", c[cid]["h"]).strip()
+
+        c = ctl()
+        if not c[OPT["run"]]["enabled"]:
+            raise RuntimeError("the optimizer has nothing to do: no parameters/goals in the file's [Optimize] section")
+        self.hook.send("click", c[OPT["run"]]["h"])
+        end, calm = time.time() + timeout, 0
+        time.sleep(2)
+        while time.time() < end and calm < 3:
+            try:
+                k = ctl()
+                calm = calm + 1 if k[OPT["run"]]["enabled"] and not k[OPT["stop"]]["enabled"] else 0
+            except native.HookError:          # MC9 is busy simulating: it answers when the step is done
+                calm = 0
+            time.sleep(1)
+        if calm < 3:
+            self.hook.send("click", c[OPT["stop"]]["h"])
+            raise TimeoutError(f"the optimizer did not finish within {timeout:.0f} s")
+        c = ctl()
+        out = {"params": {}, "goals": []}
+        for i in range(4):
+            name = text(c, OPT["p_name"] + i)
+            if name:
+                out["params"][name] = {"start": text(c, OPT["p_current"] + i), "value": text(c, OPT["p_best"] + i)}
+            expr = text(c, OPT["g_expr"] + i)
+            if expr:
+                out["goals"].append({"expr": expr, "target": text(c, OPT["g_to"] + i), "start": text(c, OPT["g_current"] + i),
+                                     "value": text(c, OPT["g_best"] + i), "error": text(c, OPT["g_error"] + i)})
+        self.hook.send("click", c[OPT["apply"]]["h"])
+        time.sleep(1)
+        self.hook.send("click", c[OPT["close"]]["h"])
+        self._wait_closed(dlg, 10)
+        return out
 
     def press_run(self) -> None:
         self.cmd.post("run")
