@@ -86,7 +86,14 @@ def install(dest: str | os.PathLike | None = None) -> Path:
 # For another build they are learned once by pressing the accelerators (`Commands.calibrate`) and kept in settings.json.
 KNOWN_IDS = {
     "f9a291ea": {"transient": 17622, "ac": 17623, "dc": 17624, "dynamic_dc": 17629, "dynamic_ac": 17628, "distortion": 17630,
-                 "run": 16068, "exit": 17152, "cursors": 17184, "select": 17561, "optimize": 18899, "save": 57603},
+                 "run": 16068, "exit": 17152, "cursors": 17184, "select": 17561, "optimize": 18899, "save": 57603,
+                 # plot-window (Scope) menu, found by clicking the menu items while the hook recorded the commands
+                 "autoscale_visible": 17178, "restore_scale": 17632, "norm_y_min": 17269, "norm_y_max": 17270,
+                 "goto_y": 17185, "goto_performance": 17191, "goto_case": 17195, "separate_window": 24101, "fill_scatter": 17176,
+                 "plot_labels_times": 40021, "animation_options": 17181,
+                 # analysis menu
+                 "limits": 16071, "stepping": 18100, "watch": 17180, "breakpoints": 17182, "op_methods": 3371,
+                 "numeric_output": 17150, "initial_conditions": 5400, "reduce_points": 18699},
 }
 ACCELERATORS = {"transient": "alt+1", "ac": "alt+2", "dc": "alt+3", "dynamic_dc": "alt+4", "dynamic_ac": "alt+5",
                 "distortion": "alt+8", "run": "F2", "exit": "F3", "cursors": "ctrl+shift+x", "optimize": "ctrl+F11", "save": "ctrl+s"}

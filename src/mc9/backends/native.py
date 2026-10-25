@@ -6,6 +6,7 @@ window). It is a separate engine from the click drivers (`linux_wine.py`, `windo
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import sys
 import time
@@ -220,9 +221,40 @@ class NativeDriver(Driver):
         self._dyn = None
         time.sleep(1.5)
 
-    def set_cursors(self, left: str, right: str | None) -> None:
+    def command(self, name: str) -> None:
+        self.cmd.post(name)
+        time.sleep(1)
+
+    def activate_window(self, title_part: str) -> None:
+        wins = self.hook.send("mdi")
+        for hw, title in re.findall(r'\[([0-9A-Fa-f]+) \S+ "([^"]*)"', wins):
+            if title_part.lower() in title.lower():
+                self.hook.send("mdi", hw)
+                time.sleep(1.5)
+                return
+        raise KeyError(f"no MC9 window with {title_part!r} in its title; have: {re.findall(chr(34) + '([^' + chr(34) + ']*)' + chr(34), wins)}")
+
+    def goto_case(self, case: int) -> None:
+        """Cursor to a stepping / Monte Carlo case ('Go to case' dialog)."""
         before = set(self._dialogs())
-        self.cmd.post("cursors")
+        self.cmd.post("goto_case")
+        dlg = self._wait_new_dialog(before, 10)
+        if dlg is None:
+            raise TimeoutError("MC9's 'go to case' dialog did not appear")
+        time.sleep(0.5)
+        kids = self._children(dlg)
+        combo = next(k for k in kids if k["cls"] == "combobox" and k["visible"] and k["enabled"])
+        left = next(k for k in kids if k["id"] == 17198 or k["text"].strip().lower() == "left")
+        close = next(k for k in kids if k["id"] == 23 or k["text"].strip().lower() == "close")
+        self.hook.send("settext", f"{combo['h']} {case}")
+        self.hook.send("click", left["h"])
+        time.sleep(1)
+        self.hook.send("click", close["h"])
+        self._wait_closed(dlg, 10)
+
+    def set_cursors(self, left: str, right: str | None, axis: str = "x") -> None:
+        before = set(self._dialogs())
+        self.cmd.post("cursors" if axis == "x" else "goto_y")
         dlg = self._wait_new_dialog(before, 10)
         if dlg is None:
             raise TimeoutError("MC9's 'go to X' dialog did not appear")

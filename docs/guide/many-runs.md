@@ -61,3 +61,24 @@ dialog by the DLL, so it needs the native engine.
 c.curves("ac", dict(y="db(v(out))", xrange=(10, 1e5), yrange=(-60, 5), color="#FF0000"))
 c.transient(10e-3, curves=["v(out)", ("F", "db(mag(fft(v(out))))")])   # a second plot: MC9's FFT
 ```
+
+## Monte Carlo histogram, statistics and plot commands (native engine)
+
+```python
+c.tolerance("R1", lot="10%"); c.tolerance("C1", lot="5%")
+c.monte_carlo(runs=100, seed=1, analysis="transient")
+c.histogram("Y_Level(v(out),1,1,10m)")                  # any MC9 performance expression
+r = c.transient(10e-3, curves=["v(out)"])
+c.show_histogram("hist.png")                            # MC9's own histogram window: bars, min / mean / max / sigma
+from mc9 import measure
+measure.statistics(measure.per_run(r, lambda run: run.peak("v(out)")[1]), lo=0.68, hi=0.78)   # your own numbers, with the yield
+
+c.cursor_case(5)                # cursor on Monte Carlo / stepping case 5
+c.autoscale(); c.restore_scale(); c.normalize_y("max")
+c.cursors_y(0.2, 0.4)           # cursors at Y values
+c.command("fill_scatter")       # any known command by name: see mc9.native.KNOWN_IDS
+```
+
+`KNOWN_IDS` also holds the numbers of the stepping (F11), limits (F9), watch window, breakpoints, operating-point methods,
+numeric output, initial-condition editor and "reduce points" commands; `c.command(name)` opens them, and
+`tools/probe_menus.py` maps further menu items (it clicks an item while the hook records the command and the dialogs).

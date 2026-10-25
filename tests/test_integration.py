@@ -145,3 +145,23 @@ def test_new_parts_simulate(engine):
         assert c.op()["J1"]["ID"] == pytest.approx(2.04e-3, rel=0.02)
     finally:
         c.close()
+
+
+def test_monte_carlo_histogram_and_plot_commands(engine):
+    if engine != "native":
+        pytest.skip("windows and plot commands go through the DLL")
+    c = _rc()
+    try:
+        c.tolerance("R1", lot="10%")
+        c.monte_carlo(runs=20, seed=1, analysis="transient")
+        c.histogram("Y_Level(v(out),1,1,10m)")
+        r = c.transient(10e-3, 0, points=201, curves=["v(out)"])
+        assert len(r.runs) == 20
+        assert c.show_histogram("it_hist.png").stat().st_size > 5000
+        c.cursor_case(5)
+        c.autoscale()
+        c.cursors_y(0.2, 0.4)
+        c.restore_scale()
+        assert c.shot("it_after_cmds.png").stat().st_size > 5000
+    finally:
+        c.close()

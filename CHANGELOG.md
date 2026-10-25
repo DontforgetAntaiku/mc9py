@@ -9,6 +9,8 @@
 - **Any MC9 part** in `Netlist`/`Schematic`: definitions are learned from MC9 on first use (`catalog.learn`), placed by the generic placer
   (transistor-like parts on the signal path, everything else beside the circuit joined by node names), `J`, `JP`, `MP`, `Z`, `E`, `SW` helpers.
 - **`mc9.audio`**: audio power-amplifier coursework (specs -> derived numbers, starter circuit, `Bench` measurements, `report`).
+- Native engine: Monte Carlo histogram window screenshot (`show_histogram`), `cursor_case`, `cursors_y`, `autoscale`, `restore_scale`,
+  `normalize_y`, `command(name)` for ~20 more MC9 commands; the hook now sees posted menu commands and can switch MDI windows (`mdi`).
 - `measure.statistics`, `measure.per_run`, `Circuit.histogram`.
 - Curve options (`xrange`, `yrange`, `xlog`, `ylog`, grid, colour), FFT plots; six new MCP tools; `mc9 doctor` checks the DLL.
 

@@ -1,7 +1,7 @@
 """Map MC9's menus: photograph a drop-down, or click an item and record its command id and the dialogs it opens.
 
 usage: python tools/probe_menus.py shots
-       python tools/probe_menus.py click <menu> <item> [<item> ...]      (items are 0-based; --state schematic|analysis|mc)
+       python tools/probe_menus.py click <menu> <y> [<y> ...]      (y = pixel row of the item in the open menu; --state=schematic|analysis|mc)
 The session is an ordinary native-engine session; xdotool is used here only to find out what a menu item does.
 """
 import sys
@@ -40,11 +40,11 @@ if mode == "shots":
         time.sleep(0.5)
 else:
     menu = args[1]
-    for item in map(int, args[2:]):
+    for item in map(int, args[2:]):             # an item is the y pixel of its row in the open drop-down
         h.send("watch", "on all"); h.send("watch", "clear")
         before = set(d._dialogs())
         open_menu(menu)
-        s.cmd(f"c {MENU_X[menu] + 40} {FIRST + DY * item}")
+        s.cmd(f"c {MENU_X[menu] + 40} {item}")
         time.sleep(3)
         ev = [e for e in h.send("watch", "dump").split() if e.startswith("111:")][:3]
         new = {k: v for k, v in d._dialogs().items() if k not in before}

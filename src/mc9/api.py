@@ -573,6 +573,41 @@ class Circuit:
         """Put MC9's cursors at X values in the open plot (MC9 then shows its own cursor table)."""
         self._session().cursors(_num(left), None if right is None else _num(right))
 
+    # ---- plot window and other MC9 windows (native engine) ------------------------------------------
+    def autoscale(self) -> None:
+        """MC9's 'autoscale the visible area' (Scope menu)."""
+        self._session().command("autoscale_visible")
+
+    def restore_scale(self) -> None:
+        """Back to the scale set in the analysis limits (Ctrl+Home)."""
+        self._session().command("restore_scale")
+
+    def normalize_y(self, to: str = "max") -> None:
+        """Scope > normalise the plot to the Y of its minimum ("min") or maximum ("max")."""
+        self._session().command({"min": "norm_y_min", "max": "norm_y_max"}[to])
+
+    def cursors_y(self, left, right=None) -> None:
+        """Place the cursors at Y values (Scope > go to Y)."""
+        self._session().cursors_y(_num(left), None if right is None else _num(right))
+
+    def cursor_case(self, case: int) -> None:
+        """Move the cursor to a stepping / Monte Carlo case (1 = the nominal circuit in Monte Carlo)."""
+        self._session().goto_case(int(case))
+
+    def show_histogram(self, file_name: str) -> Path:
+        """Screenshot of MC9's own Monte Carlo histogram window (add it first with ``histogram`` and run a Monte Carlo analysis).
+        It shows the distribution and MC9's minimum / mean / maximum / sigma."""
+        m = self._session()
+        m.show_window("Monte Carlo:")
+        try:
+            return Path(m.screenshot(file_name, "window", trim=False))
+        finally:
+            m.show_window("analysis")
+
+    def command(self, name: str) -> None:
+        """Post any MC9 command known to the native engine by name (``mc9.native.KNOWN_IDS``), e.g. ``"fill_scatter"``."""
+        self._session().command(name)
+
     def back(self) -> None:
         """Leave the analysis window (return to the schematic)."""
         if self._ui is not None and self._ui.mode != "schematic":

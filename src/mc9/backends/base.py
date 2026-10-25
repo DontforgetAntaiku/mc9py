@@ -24,7 +24,7 @@ class Driver(ABC):
         """Press OK in the Dynamic DC / Dynamic AC dialog."""
 
     @abstractmethod
-    def set_cursors(self, left: str, right: str | None) -> None:
+    def set_cursors(self, left: str, right: str | None, axis: str = "x") -> None:
         """Open MC9's 'go to X' dialog, put the left (and right) cursor there, close it."""
 
     @abstractmethod
@@ -34,6 +34,17 @@ class Driver(ABC):
     def optimize(self, timeout: float) -> dict:
         """Open MC9's Optimizer (settings come from the file's [Optimize] section), run it, apply the result."""
         raise NotImplementedError("the optimizer needs the native engine (mc9.config.engine = 'native')")
+
+    def command(self, name: str) -> None:
+        """Post one of MC9's commands by name (see ``mc9.native.KNOWN_IDS``)."""
+        raise NotImplementedError("this needs the native engine (mc9.config.engine = 'native')")
+
+    def activate_window(self, title_part: str) -> None:
+        """Bring the MC9 window whose title contains `title_part` to the front (plot, histogram, ...)."""
+        raise NotImplementedError("this needs the native engine (mc9.config.engine = 'native')")
+
+    def goto_case(self, case: int) -> None:
+        raise NotImplementedError("this needs the native engine (mc9.config.engine = 'native')")
 
     def save(self) -> None:
         """File > Save of the open circuit (MC9 then writes the definitions of every part the circuit uses)."""

@@ -154,7 +154,9 @@ class LinuxWineDriver(Driver):
     def confirm_dynamic(self, key: str) -> None:
         self._click(L.dyndc_ok if key == "dynamic_dc" else L.dynac_ok, 3)
 
-    def set_cursors(self, left: str, right: str | None) -> None:
+    def set_cursors(self, left: str, right: str | None, axis: str = "x") -> None:
+        if axis != "x":
+            raise NotImplementedError("Y cursors need the native engine (mc9.config.engine = 'native')")
         self._click(L.plot_focus, 1)         # keyboard shortcuts need a focused window
         self.s.cmd("k ctrl+shift+x")
         time.sleep(config.dialog_wait + 1)

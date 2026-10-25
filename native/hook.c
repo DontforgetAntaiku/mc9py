@@ -84,7 +84,7 @@ static void resolve_one(Target *t, int use_pattern) {
 typedef struct { UINT msg; WPARAM wp; LPARAM lp; HWND h; } Event;
 static Event g_log[512];
 static volatile LONG g_nlog;
-static HHOOK g_hook;
+static HHOOK g_hook, g_hook2;
 static HWND g_frame;
 static volatile int g_all;                     /* log commands sent to any window of the thread, not only the main one */
 
@@ -114,6 +114,17 @@ static LRESULT CALLBACK watch_proc(int code, WPARAM wp, LPARAM lp) {
         }
     }
     return CallNextHookEx(g_hook, code, wp, lp);
+}
+
+static LRESULT CALLBACK getmsg_proc(int code, WPARAM wp, LPARAM lp) {      /* posted messages: menu clicks arrive this way */
+    if (code == HC_ACTION && wp == PM_REMOVE) {
+        const MSG *m = (const MSG *)lp;
+        if ((m->message == WM_COMMAND || m->message == WM_SYSCOMMAND) && (g_all || m->hwnd == g_frame)) {
+            LONG i = InterlockedIncrement(&g_nlog) - 1;
+            if (i < 512) { g_log[i].msg = m->message; g_log[i].wp = m->wParam; g_log[i].lp = m->lParam; g_log[i].h = m->hwnd; }
+        }
+    }
+    return CallNextHookEx(g_hook2, code, wp, lp);
 }
 
 static void win_desc(HWND h, char *out) {
@@ -213,9 +224,15 @@ static void cmd_run(const char *cmd, char *args, char *out) {
             g_all = strstr(args, "all") != NULL;
             HWND f = frame(); if (!f) { put(out, "!no window"); return; }
             g_nlog = 0;
-            if (!g_hook) g_hook = SetWindowsHookExA(WH_CALLWNDPROC, watch_proc, NULL, GetWindowThreadProcessId(f, NULL));
+            DWORD tid = GetWindowThreadProcessId(f, NULL);
+            if (!g_hook) g_hook = SetWindowsHookExA(WH_CALLWNDPROC, watch_proc, NULL, tid);
+            if (!g_hook2) g_hook2 = SetWindowsHookExA(WH_GETMESSAGE, getmsg_proc, NULL, tid);
             put(out, g_hook ? "watching" : "!hook failed");
-        } else if (!strcmp(args, "off")) { if (g_hook) UnhookWindowsHookEx(g_hook); g_hook = NULL; put(out, "off"); }
+        } else if (!strcmp(args, "off")) {
+            if (g_hook) UnhookWindowsHookEx(g_hook);
+            if (g_hook2) UnhookWindowsHookEx(g_hook2);
+            g_hook = g_hook2 = NULL; put(out, "off");
+        }
         else if (!strcmp(args, "clear")) { g_nlog = 0; put(out, "cleared"); }
         else {                                        /* dump: msg wParam lParam hwnd, one per event */
             LONG n = g_nlog < 512 ? g_nlog : 512;
@@ -271,6 +288,19 @@ static void cmd_run(const char *cmd, char *args, char *out) {
         keybd_event((BYTE)vk, (BYTE)MapVirtualKeyA(vk, 0), KEYEVENTF_KEYUP, 0);
         for (int i = 2; i >= 0; i--) if (mods[i]) keybd_event((BYTE)mods[i], (BYTE)MapVirtualKeyA((UINT)mods[i], 0), KEYEVENTF_KEYUP, 0);
         put(out, "sent");
+        return;
+    }
+    if (!strcmp(cmd, "mdi")) {                        /* mdi: list the MDI child windows; mdi <hwnd>: activate one */
+        HWND f = frame(); if (!f) { put(out, "!no window"); return; }
+        HWND client = FindWindowExA(f, NULL, "MDIClient", NULL);
+        if (!client) { put(out, "!no MDI client"); return; }
+        if (args[0]) {
+            DWORD_PTR res = 0;
+            SendMessageTimeoutA(client, 0x0222 /* WM_MDIACTIVATE */, (WPARAM)h_from(args), 0, SMTO_ABORTIFHUNG, 3000, &res);
+            put(out, "activated");
+            return;
+        }
+        for (HWND w = GetWindow(client, GW_CHILD); w; w = GetWindow(w, GW_HWNDNEXT)) win_desc(w, out);
         return;
     }
     if (!strcmp(cmd, "dialogs")) {                    /* visible dialogs of the process (class #32770) */

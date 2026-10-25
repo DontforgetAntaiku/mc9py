@@ -238,7 +238,9 @@ class WindowsDriver(Driver):
         self._dyn_dialog = None
         time.sleep(3)
 
-    def set_cursors(self, left: str, right: str | None) -> None:
+    def set_cursors(self, left: str, right: str | None, axis: str = "x") -> None:
+        if axis != "x":
+            raise NotImplementedError("Y cursors need the native engine (mc9.config.engine = 'native')")
         self._focus()
         self._click(L.plot_focus, 0.5)
         before = set(self._dialogs())

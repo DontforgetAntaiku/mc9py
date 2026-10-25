@@ -70,6 +70,18 @@ class MC9:
         """MC9 measurement cursors at X values (SI suffixes ok: 23.01k)."""
         self.d.set_cursors(left, right)
 
+    def command(self, name: str) -> None:
+        self.d.command(name)
+
+    def show_window(self, title_part: str) -> None:
+        self.d.activate_window(title_part)
+
+    def goto_case(self, case: int) -> None:
+        self.d.goto_case(case)
+
+    def cursors_y(self, left: str, right: str | None = None) -> None:
+        self.d.set_cursors(left, right, axis="y")
+
     def exit_analysis(self) -> None:
         self.d.exit_analysis()
         self.mode, self.maximized = "schematic", False
