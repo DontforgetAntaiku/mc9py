@@ -17,7 +17,7 @@ wins = h.send("mdi")
 print("mdi:", wins)
 found = re.findall(r"\[([0-9A-F]+) (\S+) \"([^\"]*)\" (\d+x\d+)", wins)
 h.send("watch", "on all")
-for hw, cls, title, size in found:
+for hw, _cls, title, _size in found:
     if "Y_Level" in title or "Level" in title:
         h.send("mdi", hw)
         time.sleep(2)
