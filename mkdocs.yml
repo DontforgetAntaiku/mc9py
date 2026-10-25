@@ -62,6 +62,7 @@ nav:
       - Architecture: internals/architecture.md
       - MC9 file format and geometry: internals/mc9-notes.md
       - The Windows backend: internals/windows-backend.md
+      - The native hook (experimental): internals/native-hook.md
       - Supporting other MC9 editions: internals/calibration.md
   - Reference:
       - Python API: reference/api.md

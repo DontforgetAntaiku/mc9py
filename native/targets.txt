@@ -1,0 +1,6 @@
+# functions we want to find in any MC9 build; the anchor is a string the function uses
+analysis_settings_io = "%s monitor"
+run_time_report      = "Run Time = %g"
+run_options_dialog   = "Run Options"
+wsp_run              = "WSP Run"
+dynamic_ac_limits    = "Dynamic AC Limits"
