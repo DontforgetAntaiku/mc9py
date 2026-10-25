@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.0 - 2026-10-25
 - **Two engines.** `mc9.config.engine`: *native* (default; `mc9hook.dll` inside MC9 posts MC9's own commands and fills its dialogs - no mouse,
   keyboard or screen coordinates) and *clicks* (the old mouse/keyboard drivers, used only if the DLL cannot start). The prebuilt DLL is shipped in the wheel.
 - **Offset auto-search** inside MC9 (byte patterns, string anchors, MFC message maps), `tools/sigmaker.py` for other builds.
