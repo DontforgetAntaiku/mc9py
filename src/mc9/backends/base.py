@@ -35,6 +35,10 @@ class Driver(ABC):
         """Open MC9's Optimizer (settings come from the file's [Optimize] section), run it, apply the result."""
         raise NotImplementedError("the optimizer needs the native engine (mc9.config.engine = 'native')")
 
+    def save(self) -> None:
+        """File > Save of the open circuit (MC9 then writes the definitions of every part the circuit uses)."""
+        raise NotImplementedError
+
     @abstractmethod
     def prepare_capture(self, schematic: bool) -> None:
         """Remove hover artefacts before a screenshot (leave placement mode, park the mouse)."""

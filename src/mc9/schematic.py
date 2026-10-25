@@ -14,6 +14,7 @@ Units: 1 grid = 8 design px = 16 screen px. MC9 draws, per node, one voltage box
 """
 from __future__ import annotations
 
+import copy
 import itertools
 from dataclasses import dataclass, field
 
@@ -477,6 +478,17 @@ class Schematic:
         names = []
         for text, (x, y) in self.nodes_named:
             names.append(cirmod.Section("Grid Text", [f'Text="{text}"', f"Grid={x+sx},{y+sy}", "CBorder=NONE", ""]))
+        have = {(s_.name, s_.get("Name")) for s_ in t.sections if s_.name in ("shapedef", "compdef")}
+        defs = []                                           # definitions of parts MC9 taught us (not in the base template)
+        for p in self.parts:
+            for sec in p.kind.defs:
+                key = (sec.name, sec.get("Name"))
+                if key not in have:
+                    have.add(key)
+                    defs.append(copy.deepcopy(sec))
+        if defs:
+            j = next(k for k, s_ in enumerate(t.sections) if s_.name == "Circuit")
+            t.sections[j:j] = sorted(defs, key=lambda s_: s_.name != "shapedef")
         i = max(j for j, s_ in enumerate(t.sections) if s_.name == "Circuit") + 1
         t.sections[i:i] = new + names
         main = t.sections[0]

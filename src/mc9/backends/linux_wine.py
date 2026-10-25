@@ -165,6 +165,10 @@ class LinuxWineDriver(Driver):
             self._click(L.cursor_right, 1)
         self._click(L.cursor_close, 1)
 
+    def save(self) -> None:
+        self.s.cmd("k ctrl+s")
+        time.sleep(4)
+
     def exit_analysis(self) -> None:
         self.s.cmd("k F3")
         time.sleep(2)

@@ -263,6 +263,11 @@ class WindowsDriver(Driver):
         _msg(b_close, BM_CLICK)
         time.sleep(1)
 
+    def save(self) -> None:
+        self._focus()
+        self._key("ctrl+s")
+        time.sleep(4)
+
     def exit_analysis(self) -> None:
         self._focus()
         self._key("f3")

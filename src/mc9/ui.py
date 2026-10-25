@@ -56,6 +56,10 @@ class MC9:
         self.d.confirm_dynamic("dynamic_ac")
         self.mode = "dynamic_ac"
 
+    def save(self) -> None:
+        """File > Save (used to make MC9 write the definitions of library parts into the circuit)."""
+        self.d.save()
+
     def optimize(self, analysis: str, timeout: float = 600) -> dict:
         """Run the analysis once, then MC9's optimizer on it (native engine); returns what the optimizer reports."""
         self.run(analysis)

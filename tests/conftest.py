@@ -26,3 +26,14 @@ def engine(request):
     mc9.config.engine = request.param
     yield request.param
     mc9.config.engine = old
+
+
+@pytest.fixture(autouse=True)
+def _no_mc9_in_offline_tests(request):
+    """Offline tests must never start MC9 (e.g. to learn an unknown part)."""
+    import mc9
+    old = mc9.config.learn_parts
+    if not request.node.get_closest_marker("mc9"):
+        mc9.config.learn_parts = False
+    yield
+    mc9.config.learn_parts = old

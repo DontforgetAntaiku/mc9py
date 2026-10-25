@@ -17,7 +17,7 @@ from collections import deque
 from dataclasses import dataclass, field
 
 from . import catalog
-from .netlist import GROUND, Netlist, NPart
+from .netlist import GROUND, ROLES, Netlist, NPart
 from .schematic import Part, Schematic
 
 COL = 8          # horizontal room for one hanging branch (grid units)
@@ -57,6 +57,7 @@ class _Run:
         self.rail_drops: dict[str, list[tuple[int, int]]] = {}
         self.stubs: list[tuple[str, tuple[int, int]]] = []       # (net, point) pairs connected by name only
         self.auto = 0
+        self._auto_names: dict[str, str] = {}
         self.notes: list[str] = []
         self.rail_src: dict[str, NPart] = {}
         self.bridges_labeled: set[str] = set()
@@ -102,8 +103,10 @@ class _Run:
 
     def label_name(self, net: str) -> str:
         if net.startswith("_") or net in GROUND:
-            self.auto += 1
-            return f"n{self.auto}"
+            if net not in self._auto_names or net in GROUND:
+                self.auto += 1
+                self._auto_names[net] = f"n{self.auto}"
+            return self._auto_names[net]
         return net
 
     def label_pt(self, net: str, pt) -> None:
@@ -114,7 +117,7 @@ class _Run:
         parts = self.nl.parts
         grounded = [p for p in parts if p.kind.name in SOURCES and any(self.gnd(n) for n in p.nets.values())]
         sig = [p for p in grounded if _signal_value(p.value)]
-        active = any(p.kind.name in ("NPN", "PNP", "Opamp", "NMOS") for p in parts)
+        active = any(p.kind.name in ROLES or p.kind.name == "Opamp" for p in parts)
         self.src = None
         if self.o.input:
             self.src = next((p for p in grounded if self.o.input in p.nets.values()), None)
@@ -141,10 +144,11 @@ class _Run:
             if p.two_terminal:
                 a, b = list(p.nets)
                 pairs = [(a, b), (b, a)]
-            elif k in ("NPN", "PNP"):
-                pairs = [("Base", "Collector")]
-            elif k == "NMOS":
-                pairs = [("Gate", "Drain")]
+            elif k in ROLES:
+                ctrl, outp, ref = ROLES[k]
+                pairs = [(ctrl, outp)]
+                if self.gnd(p.nets[outp]) or self.rail(p.nets[outp]):      # follower: the signal leaves at the emitter/source
+                    pairs = [(ctrl, ref)]
             elif k == "Opamp":
                 pairs = [("Plus input", "Output"), ("Minus input", "Output")]
             for ein, eout in pairs:
@@ -169,7 +173,7 @@ class _Run:
                 if m not in seen:
                     seen.add(m); prev[m] = (n, step); order.append(m); q.append(m)
         controls = {n for p in self.nl.parts for pin, n in p.nets.items()
-                    if pin in ("Base", "Gate", "Plus input", "Minus input")}      # feedback nodes are never "the output"
+                    if pin in {r[0] for r in ROLES.values()} | {"Plus input", "Minus input"}}      # feedback nodes are never "the output"
         cands = [n for n in order[1:] if n not in controls]
         target = self.o.output or (cands[-1] if cands else (order[-1] if len(order) > 1 else None))
         if target is None or target not in prev:
@@ -266,7 +270,10 @@ class _Run:
             downs = [it for it in self.branch_items(net_in) if self.direction_of(it[0], net_in) == "down"]
             cw = self.colw(ups + downs)
             gap = max(self.gap, cw * max(len(ups), len(downs), 1) + 2)
-            if p.kind.name in ("NPN", "PNP", "NMOS", "Opamp"):
+            if p.kind.name in ROLES:
+                ref = ROLES[p.kind.name][2]
+                rot = 4 if (self.rail(p.nets[ref]) and ein != ref) else 0     # emitter/source on a supply rail: flipped, rail above
+            elif p.kind.name == "Opamp":
                 rot = 0
             else:
                 rot = self.rot_for(p.kind, ein, eout, "x")
@@ -305,16 +312,27 @@ class _Run:
     def side_pins(self, p: NPart, part: Part, ein: str, eout: str) -> None:
         """Pins of multi-pin parts that are not on the backbone: emitter/source, op-amp second input and supplies."""
         k = p.kind.name
-        if k in ("NPN", "PNP", "NMOS"):
-            pin = "Emitter" if k != "NMOS" else "Source"
+        if k in ROLES:
+            pin = ROLES[k][2] if eout != ROLES[k][2] else ROLES[k][1]     # the pin that is not on the signal path
             pt = part.pin(pin)
             net = p.nets[pin]
             d = "down" if (pt[1] > part.pin(ein)[1]) else "up"
             self.route_pin(net, pt, d)
-            if k == "NMOS":
-                bpt = part.pin("Body"); bnet = p.nets["Body"]
-                if bnet != net:
-                    self.route_pin(bnet, (bpt[0] + 0, bpt[1]), "down", stub_x=2)
+            ref_pin = ROLES[k][2]
+            for other in p.nets:                              # body / substrate pins
+                if other in ROLES[k] or other == eout:
+                    continue
+                bpt, onet = part.pin(other), p.nets[other]
+                end = (bpt[0] + STUB, bpt[1])
+                self.W(bpt, end, onet)
+                if onet == p.nets[ref_pin]:                   # tied to the source/emitter: a small loop to it
+                    rpt = part.pin(ref_pin)
+                    self.W(end, (end[0], rpt[1]), onet)
+                    self.W((end[0], rpt[1]), rpt, onet)
+                elif self.gnd(onet):
+                    self.sch.add("GND", None, at=end)
+                else:
+                    self.label_pt(onet, end)
         elif k == "Opamp":
             other = "Plus input" if ein == "Minus input" else "Minus input"
             pt = part.pin(other)
@@ -406,7 +424,34 @@ class _Run:
                     self.label_pt(mnet, end2)
                 x += 12
             else:
-                self.notes.append(f"{p.name}: could not be placed automatically; connect it by node name")
+                x = self.satellite(p, x)
+
+    def satellite(self, p: NPart, x: int) -> int:
+        """Any other part (transformer, switch, controlled source, gate, macro ...): drawn in a free row below the circuit,
+        every pin on a short stub that ends in the node's name (equal names are one node in MC9) or in a ground symbol."""
+        ys = [w[0][1] for w in self.wires] + [w[1][1] for w in self.wires] + [0]
+        y = max(ys) + 14
+        part = self.add(p, (x, y), 0)
+        pts = {pin: part.pin(pin) for pin in p.nets}
+        cx = sum(pt[0] for pt in pts.values()) / len(pts)
+        cy = sum(pt[1] for pt in pts.values()) / len(pts)
+        for pin, pt in pts.items():
+            dx, dy = pt[0] - cx, pt[1] - cy
+            if abs(dx) >= abs(dy):
+                end, up = (pt[0] + (STUB if dx >= 0 else -STUB), pt[1]), False
+            else:
+                end, up = (pt[0], pt[1] + (STUB if dy >= 0 else -STUB)), dy < 0
+            net = p.nets[pin]
+            self.W(pt, end, net)
+            if self.gnd(net):
+                if up:
+                    self.ground_up.append(end)
+                else:
+                    self.sch.add("GND", None, at=end)
+            else:
+                self.label_pt(net, end)
+        width = max(pt[0] for pt in pts.values()) - min(pt[0] for pt in pts.values())
+        return x + max(14, width + 2 * STUB + 10)
 
     def rail_buses(self) -> None:
         """First up-rail as a bus with its source at the right end; further rails by labels."""

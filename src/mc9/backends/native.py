@@ -243,6 +243,10 @@ class NativeDriver(Driver):
         self._wait_closed(dlg, 10)
         time.sleep(0.5)
 
+    def save(self) -> None:
+        self.cmd.post("save")
+        time.sleep(4)
+
     def exit_analysis(self) -> None:
         self.cmd.post("exit")
         time.sleep(2)
