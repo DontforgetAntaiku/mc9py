@@ -45,6 +45,7 @@ class NativeDriver(Driver):
         self.name = name
         self.session = None
         self.proc = None
+        self._dyn = None
         workspace.path(name)
         folder = native.install()
         self.hook = native.Hook()
@@ -90,7 +91,7 @@ class NativeDriver(Driver):
                 return
             except native.HookError:
                 time.sleep(0.5)
-        raise TimeoutError("MC9 main window did not appear")
+        raise TimeoutError("MC9 main window did not appear" + self._dialog_report())
 
     def close(self) -> None:
         try:
@@ -116,6 +117,17 @@ class NativeDriver(Driver):
             out.append({"h": h, "cls": cls.lower(), "id": int(cid or 0), "text": text, "x": x, "y": y, "w": w, "h_": hh,
                         "visible": flags[:1] == "1", "enabled": flags[1:2] == "1"})
         return out
+
+    def _dialog_report(self) -> str:
+        """What MC9's dialogs say (e.g. 'Text .MODEL ... expected )'): the best clue when something did not start."""
+        try:
+            lines = []
+            for h, title in self._dialogs().items():
+                texts = [c["text"] for c in self._children(h) if c["cls"] == "static" and c["text"].strip()]
+                lines.append(f"[{title}] " + " | ".join(texts))
+            return ": " + "; ".join(lines) if lines else ""
+        except Exception:
+            return ""
 
     def _wait_new_dialog(self, before: set[str], timeout: float) -> str | None:
         end = time.time() + timeout

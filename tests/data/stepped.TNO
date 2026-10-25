@@ -1,0 +1,58 @@
+Limits
+======
+Time Range           40m,35m
+
+Stepping Options
+================
+Stepping is Nested
+
+Step What  R1 Value
+From       1k
+To         3k
+Step Value 1k
+Method     Linear
+
+
+
+*****************************************************
+***                Temperature=25                 ***
+***                     R1=1K                     ***
+*****************************************************
+
+Temperature=25 R1=1K
+
+DC Operating Point Voltages
+===========================
+Node         Voltage  Node         Voltage 
+IN          -15.678f  OUT         -15.678f 
+
+
+Waveform Values
+===============
+         T     v(out)
+    (Secs)        (V)
+   35.000m   0.1
+   36.000m   0.2
+
+
+
+*****************************************************
+***                Temperature=25                 ***
+***                     R1=2K                     ***
+*****************************************************
+
+Temperature=25 R1=2K
+
+DC Operating Point Voltages
+===========================
+Node         Voltage  Node         Voltage 
+IN          -15.678f  OUT         -15.678f 
+
+
+Waveform Values
+===============
+         T     v(out)
+    (Secs)        (V)
+   35.000m   0.3
+   36.000m   0.4
+

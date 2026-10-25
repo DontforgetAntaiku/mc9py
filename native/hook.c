@@ -291,6 +291,29 @@ static void cmd_run(const char *cmd, char *args, char *out) {
         put(out, "done");
         return;
     }
+    if (!strcmp(cmd, "msg")) {                        /* msg <hwnd> <msg hex> <wparam> <lparam | text>: any window message, answer = result */
+        char *e1; HWND h = (HWND)(size_t)strtoul(args, &e1, 16);
+        char *e2; UINT m = (UINT)strtoul(e1, &e2, 16);
+        char *e3; WPARAM w = (WPARAM)strtol(e2, &e3, 0);
+        while (*e3 == ' ') e3++;
+        LPARAM l = (e3[0] == '"') ? (LPARAM)(e3 + 1) : (LPARAM)strtol(e3, NULL, 0);
+        if (e3[0] == '"') { char *q = strrchr(e3 + 1, '"'); if (q) *q = 0; }
+        DWORD_PTR res = 0;
+        if (!IsWindow(h)) { put(out, "!no such window"); return; }
+        if (!SendMessageTimeoutA(h, m, w, l, SMTO_ABORTIFHUNG, 3000, &res)) { put(out, "timeout"); return; }
+        put(out, "%ld", (long)res);
+        return;
+    }
+    if (!strcmp(cmd, "tabsel")) {                     /* tabsel <tab control hwnd> <index>: select a tab and tell the dialog */
+        char *e; HWND tab = (HWND)(size_t)strtoul(args, &e, 16); int idx = atoi(e);
+        if (!IsWindow(tab)) { put(out, "!no such window"); return; }
+        DWORD_PTR res = 0;
+        SendMessageTimeoutA(tab, 0x130C /* TCM_SETCURSEL */, (WPARAM)idx, 0, SMTO_ABORTIFHUNG, 3000, &res);
+        NMHDR nm; nm.hwndFrom = tab; nm.idFrom = (UINT_PTR)GetDlgCtrlID(tab); nm.code = (UINT)-551;   /* TCN_SELCHANGE */
+        SendMessageTimeoutA(GetParent(tab), WM_NOTIFY, nm.idFrom, (LPARAM)&nm, SMTO_ABORTIFHUNG, 3000, &res);
+        put(out, "done");
+        return;
+    }
     if (!strcmp(cmd, "gettext")) {
         char t[512] = ""; DWORD_PTR n = 0;
         SendMessageTimeoutA(h_from(args), WM_GETTEXT, sizeof t, (LPARAM)t, SMTO_ABORTIFHUNG, 2000, &n);

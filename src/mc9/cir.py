@@ -98,12 +98,85 @@ class Cir:
         sec.set("ONV", f"{x},{y},{key},{value}")
         return old
 
+    def add_attr(self, part: str, name: str, value: str) -> None:
+        """Set an attribute; a missing one is created hidden (no Style line), e.g. a part's MODEL."""
+        c = self.find_part(part)
+        if any(k.lower() == name.lower() for k in c["attrs"]):
+            self.set_attr(part, name, value)
+            return
+        self.sections.insert(max(c["_attr_idx"].values()) + 1, Section("Attr", [f"ONV=0,0,{name},{value}"]))
+
+    def add_text(self, lines: list[str]) -> None:
+        """Append text lines (.MODEL/.DEFINE/.PARAMETERS ...) to the circuit's text page (page 1 of the text areas).
+
+        A ``.MODEL``/``.DEFINE`` line replaces an earlier one that defines the same name."""
+        page = next((s for s in self.sections if s.name == "Text Area" and s.get("Page") == "1"), None)
+        if page is None:
+            header = ["Section=0", "Page=1", "Font=Height=-12,FStyle=0,Color=#000000,Name=Courier New",
+                      "Comment Color=#808080", "Background Color=#FFFFFF", "Len=0", ""]
+            page = Section("Text Area", header + [""])
+            second = Section("Text Area", [h if not h.startswith("Page=") else "Page=2" for h in header[:-2]] + ["Len=0", "", ""])
+            pos = next((i for i, x in enumerate(self.sections) if x.name in ("Transient", "AC", "DC", "Distortion")), len(self.sections))
+            self.sections[pos:pos] = [page, second]
+        k = page.lines.index("")                                  # text starts after the first blank line of the header
+        body = [ln for ln in page.lines[k + 1:] if ln]
+        for ln in lines:
+            toks = ln.split()
+            if len(toks) > 1 and toks[0].upper() in (".MODEL", ".DEFINE", ".PARAMETERS", ".PARAM"):
+                body = [b for b in body if [t.upper() for t in b.split()[:2]] != [t.upper() for t in toks[:2]]]
+            if ln not in body:
+                body.append(ln)
+        page.lines[k + 1:] = body + [""]
+        page.set("Len", str(len("\r\n".join(body)) + 2))      # counts the closing line break
+
     # ---- analyses ---------------------------------------------------
     def limits(self, analysis: str) -> Section:
         for s in self.sections:
             if s.name == "Limits" and (s.get("Analysis") or "").lower() == analysis.lower():
                 return s
         raise KeyError(f"no [Limits] for analysis {analysis!r}")
+
+    # ---- stepping / Monte Carlo (both live in the file, one section per analysis) ----------------
+    def _insert_point(self) -> int:
+        """Where new per-analysis sections go: before MC9's [Optimize]/[Watch]/... block, else at the end."""
+        for i, s in enumerate(self.sections):
+            if s.name in ("Optimize", "Watch", "Monte Carlo Options"):
+                return i
+        return len(self.sections)
+
+    def stepping(self, analysis: str) -> list[dict]:
+        out = []
+        for s in self.sections:
+            if s.name == "Stepping" and (s.get("Analysis") or "").lower() == analysis.lower():
+                out.append(dict(ln.split("=", 1) for ln in s.lines if "=" in ln))
+        return out
+
+    def set_stepping(self, analysis: str, steps: list, nested: bool = True) -> None:
+        """Replace the [Stepping] sections of one analysis (``steps``: list of mc9.stepping.Step; empty = stepping off)."""
+        name = {"transient": "Transient", "ac": "AC", "dc": "DC", "distortion": "Distortion"}[analysis.lower()]
+        self.sections = [s for s in self.sections
+                         if not (s.name == "Stepping" and (s.get("Analysis") or "").lower() == analysis.lower())]
+        new = []
+        for i, st in enumerate(steps, 1):
+            sec = Section("Stepping", [f"Analysis={name}", f"Index={i}"])
+            if i == 1 and not nested:
+                sec.lines.append("Simultaneous=Yes")
+            if st.enabled:
+                sec.lines.append("Status=On")
+            if st.method != "linear":
+                sec.lines.append(f"Method={st.method.capitalize()}")
+            sec.lines += [f"Parameter Type={st.kind.capitalize()}", f"Name={st.what}", f"Param={st.param or 'Value'}", f"From={st.start}"]
+            if st.method != "list":
+                sec.lines += [f"To={st.stop}", f"Value={st.step}"]
+            new.append(sec)
+        pos = self._insert_point()
+        self.sections[pos:pos] = new
+
+    def monte_carlo(self, analysis: str) -> Section:
+        for s in self.sections:
+            if s.name == "Monte Carlo Options" and (s.get("Analysis") or "").lower() == analysis.lower():
+                return s
+        raise KeyError(f"no [Monte Carlo Options] for analysis {analysis!r}")
 
     def waveform_indices(self, analysis: str) -> list[int]:
         return [i for i, s in enumerate(self.sections)

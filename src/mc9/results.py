@@ -32,7 +32,10 @@ def parse_waveforms(text: str) -> list[dict]:
     lines = [ln.rstrip("\r") for ln in text.split("\n")]
     tables = []
     i = 0
+    header = ""                                   # "Temperature=25 R1=1K": which stepped run the next table belongs to
     while i < len(lines):
+        if lines[i].startswith("Temperature="):
+            header = lines[i].strip()
         if lines[i].strip() == "Waveform Values":
             j = i + 2  # skip ====
             while j < len(lines) and not lines[j].strip():
@@ -50,12 +53,13 @@ def parse_waveforms(text: str) -> list[dict]:
                     break
                 rows.append(vals)
                 k += 1
-            label = ""
-            for back in range(i - 1, max(i - 12, -1), -1):
-                t = lines[back].strip()
-                if t and not set(t) <= set("*=-") and "=" in t and not t.startswith("***"):
-                    label = t
-                    break
+            label = header
+            if not label:
+                for back in range(i - 1, max(i - 12, -1), -1):
+                    t = lines[back].strip()
+                    if t and not set(t) <= set("*=-") and "=" in t and not t.startswith("***"):
+                        label = t
+                        break
             tables.append({"columns": cols, "units": units, "rows": rows, "label": label})
             i = k
         else:

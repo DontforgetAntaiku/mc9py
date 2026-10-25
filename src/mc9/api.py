@@ -23,6 +23,7 @@ from . import cir as cirmod
 from . import results as resmod
 from . import ui, workspace
 from .config import config
+from .stepping import Step
 
 _ANALYSES = ("transient", "ac", "dc", "distortion")
 _LIMIT_NAME = {"transient": "Transient", "ac": "AC", "dc": "DC", "distortion": "Distortion",
@@ -57,6 +58,17 @@ class Run:
 
     def __len__(self) -> int:
         return len(self.x)
+
+    @property
+    def params(self) -> dict[str, float | str]:
+        """What this stepped run used: ``{"Temperature": 25.0, "R1": 1000.0}`` (empty when nothing was stepped)."""
+        out: dict[str, float | str] = {}
+        for tok in self.label.split():
+            if "=" in tok:
+                k, v = tok.split("=", 1)
+                val = resmod.parse_value(v)
+                out[k] = v if val is None else val
+        return out
 
     def _log_x(self) -> bool:
         x = self.x
@@ -149,6 +161,13 @@ class Result:
     def _mk(self, d: dict) -> Run:
         return Run(self.analysis, d["columns"], d["units"], d["rows"], d["label"])
 
+    def select(self, **params) -> list[Run]:
+        """Stepped runs whose parameters match, e.g. ``result.select(R1=2000)`` (numbers compare with 0.1 % tolerance)."""
+        def same(a, b):
+            return abs(a - b) <= 1e-3 * max(abs(a), abs(b), 1e-30) if isinstance(a, float) and isinstance(b, float) else a == b
+        return [r for r in self.runs if all(k in r.params and same(r.params[k], float(v) if not isinstance(v, str) else v)
+                                            for k, v in params.items())]
+
     # first run delegates
     @property
     def columns(self) -> list[str]:
@@ -208,6 +227,83 @@ class Circuit:
         self._ui: ui.MC9 | None = None
         self._hash: str | None = None
         self.last: Result | None = None
+        self._steps: dict[str, list[Step]] = {}
+        self._nested = True
+
+    # ---- stepping -----------------------------------------------------------------------------
+    def step(self, what: str, start, stop=None, step=None, *, param: str | None = None, method: str | None = None,
+             kind: str = "component", enabled: bool = True, analysis: str | Sequence[str] | None = None) -> None:
+        """Add a stepped variable; every later analysis runs once per value (the runs are ``result.runs``).
+
+        ``c.step("R1", "1k", "3k", "1k")``                      R1 = 1k, 2k, 3k (linear)
+        ``c.step("R1", 1e3, 1e5, 10, method="log")``            multiply by 10 each run
+        ``c.step("C1", "1n,10n,100n")``                         a list of values
+        ``c.step("BF420", 100, 400, 100, param="BF", kind="model")``   a model parameter
+        Up to 20 variables; they change as nested loops (default) or all together (``stepping_mode(False)``).
+        ``analysis=`` limits it to "transient"/"ac"/"dc"/"distortion" (default: all four).
+        """
+        if method is None:
+            method = "list" if stop is None and "," in str(start) else "linear"
+        text = lambda v: "" if v is None else _num(v)  # noqa: E731
+        st = Step(what, text(start), text(stop), text(step), param, method, kind, enabled)
+        for a in ([analysis] if isinstance(analysis, str) else analysis or _ANALYSES):
+            self._steps.setdefault(a.lower(), []).append(st)
+        self._dirty = True
+
+    def clear_steps(self) -> None:
+        """Switch stepping off for the following runs."""
+        for a in self._steps:
+            self._steps[a] = []
+        self._dirty = True
+
+    def stepping_mode(self, nested: bool = True) -> None:
+        """``True``: every combination (nested loops); ``False``: all variables change simultaneously."""
+        self._nested = nested
+        self._dirty = True
+
+    # ---- models, tolerances, Monte Carlo -------------------------------------------------------
+    def model(self, *lines: str) -> None:
+        """Add netlist text to the circuit (MC9's *Text* page): ``c.model(".MODEL BF420X NPN (BF=300 IS=1E-14)")``."""
+        self._cir.add_text(list(lines))
+        self._dirty = True
+
+    _TOL_MODEL = {"Resistor": ("RES", "R"), "Capacitor": ("CAP", "C"), "Inductor": ("IND", "L")}
+
+    def tolerance(self, part: str, lot: str | float | None = None, dev: str | float | None = None) -> None:
+        """Give a resistor/capacitor/inductor a tolerance for Monte Carlo: ``c.tolerance("R1", lot="5%")``.
+
+        ``lot``: all parts of that lot move together; ``dev``: each part varies on its own (percent, e.g. ``5`` or ``"5%"``).
+        """
+        kind = self._cir.find_part(part)["type"]
+        if kind not in self._TOL_MODEL:
+            raise ValueError(f"{part} is a {kind}; tolerances are supported on Resistor, Capacitor and Inductor")
+        mname, pname = self._TOL_MODEL[kind]
+        pct = lambda v: v if isinstance(v, str) else f"{v:g}%"  # noqa: E731
+        spec = " ".join(x for x in (f"{pname}=1", f"LOT={pct(lot)}" if lot is not None else "",
+                                    f"DEV={pct(dev)}" if dev is not None else "") if x) + " "      # MC9 wants "5% )"
+        name = f"{part.upper()}_TOL"
+        self._cir.add_text([f".MODEL {name} {mname} ({spec})"])
+        self._cir.add_attr(part, "MODEL", name)
+        self._dirty = True
+
+    def monte_carlo(self, runs: int = 10, distribution: str = "normal", seed: int = 0, zero_tolerance: bool = False,
+                    analysis: str | Sequence[str] | None = None, on: bool = True) -> None:
+        """Monte Carlo on/off for the analyses (default all): each analysis then runs ``runs`` times (see ``result.runs``).
+
+        ``distribution``: "normal" or "worst case" (MC9 also lets a part pick GAUSS/UNIFORM/WCASE in its model).
+        """
+        dist = {"normal": "Normal", "gauss": "Normal", "worst case": "Worst Case", "worst": "Worst Case", "wcase": "Worst Case"}
+        if distribution.lower() not in dist:
+            raise ValueError(f"distribution must be one of {sorted(set(dist))}")
+        names = {"transient": "Transient", "ac": "AC", "dc": "DC", "distortion": "Distortion"}
+        for a in ([analysis] if isinstance(analysis, str) else analysis or _ANALYSES):
+            sec = self._cir.monte_carlo(names[a.lower()])
+            sec.set("Status", "On" if on else "Off")
+            sec.set("Distribution", dist[distribution.lower()])
+            sec.set("Number of Runs", str(int(runs)))
+            sec.set("Seed", str(int(seed)))
+            sec.set("Zero Tolerance", "True" if zero_tolerance else "False")
+        self._dirty = True
 
     # ---- inspect / edit parts ----------------------------------------------------------------
     def parts(self) -> dict[str, dict]:
@@ -283,6 +379,8 @@ class Circuit:
                                       stacklevel=4)
 
     def _flush(self) -> None:
+        for a, steps in self._steps.items():
+            self._cir.set_stepping(a, steps, self._nested)
         for sec in self._cir.sections:
             if sec.name in ("Transient", "AC", "DC", "Distortion") and sec.get("Window Placement") is not None:
                 sec.set("Window Placement", self._MAXIMIZED if config.maximize_plots else sec.get("Window Placement"))
