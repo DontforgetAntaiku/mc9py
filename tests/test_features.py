@@ -87,3 +87,18 @@ def test_stepped_run_labels_and_select():
     assert r.runs[0].params == {"Temperature": 25.0, "R1": 1000.0}
     assert r.select(R1=2000)[0]["v(out)"] == [0.3, 0.4]
     assert r.select(R1=9999) == []
+
+
+def test_statistics_and_yield():
+    from mc9 import measure
+    st = measure.statistics([9.8, 10.0, 10.2, 10.4, 9.6], lo=9.7, hi=10.3)
+    assert st["n"] == 5 and st["mean"] == pytest.approx(10.0) and st["yield"] == pytest.approx(3 / 5)
+    assert st["min"] == 9.6 and st["max"] == 10.4 and st["median"] == 10.0
+    with pytest.raises(ValueError):
+        measure.statistics([])
+
+
+def test_histogram_section(circ):
+    circ.histogram("Y_Level(v(out),1,1,5m)")
+    sec = next(s for s in circ._cir.sections if s.name == "Monte Carlo")
+    assert sec.get("PMExpression") == "Y_Level(v(out),1,1,5m)" and sec.get("ShowWin") == "True"

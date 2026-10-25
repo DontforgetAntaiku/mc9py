@@ -55,6 +55,7 @@ nav:
       - Measurements: guide/measurements.md
       - Stepping, Monte Carlo, optimizer: guide/many-runs.md
       - Lab cookbook: guide/cookbook.md
+      - Audio power amplifier (coursework): guide/audio-amplifier.md
       - Building schematics: guide/schematics.md
       - Automatic placement: guide/autoplace.md
       - MCP server (AI assistants): guide/mcp.md

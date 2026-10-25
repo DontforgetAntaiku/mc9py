@@ -151,3 +151,23 @@ def solve(c: Circuit, part: str, attr: str, f: Callable, target: float, lo: floa
 def _eval(c: Circuit, part: str, attr: str, value: float):
     c.set(part, attr, value)
     return c.op()
+
+
+def statistics(values, lo: float | None = None, hi: float | None = None) -> dict:
+    """Monte Carlo style statistics of a list of numbers: n, mean, std (sample), min, max, median and, with limits, the yield."""
+    v = sorted(float(x) for x in values if x == x)
+    n = len(v)
+    if n == 0:
+        raise ValueError("no values")
+    mean = sum(v) / n
+    std = math.sqrt(sum((x - mean) ** 2 for x in v) / (n - 1)) if n > 1 else 0.0
+    out = {"n": n, "mean": mean, "std": std, "min": v[0], "max": v[-1], "median": v[n // 2] if n % 2 else (v[n // 2 - 1] + v[n // 2]) / 2}
+    if lo is not None or hi is not None:
+        ok = sum(1 for x in v if (lo is None or x >= lo) and (hi is None or x <= hi))
+        out["yield"] = ok / n
+    return out
+
+
+def per_run(result, fn) -> list[float]:
+    """Apply a function to every run of a stepped / Monte Carlo result: ``per_run(r, lambda run: run.peak("v(out)")[1])``."""
+    return [fn(run) for run in result.runs]

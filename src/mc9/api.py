@@ -316,6 +316,18 @@ class Circuit:
         self._cir.add_attr(part, "MODEL", name)
         self._dirty = True
 
+    def histogram(self, expression: str, analysis: str = "transient") -> None:
+        """Add MC9's Monte Carlo histogram of a performance expression, e.g. ``Rise_Time(v(out),1,1,1,2)``
+        or ``Y_Level(v(out),1,1,5m)``; MC9 fills it after a Monte Carlo run (a tab next to the plot)."""
+        name = {"transient": "Transient", "ac": "AC", "dc": "DC", "distortion": "Distortion"}[analysis.lower()]
+        lines = [f"Analysis={name}", "Window Placement=2,3, -1,-1, -4,-25, 96,96,919,536",
+                 "Font=Height=-15,FStyle=0,Color=#0000FF,Name=Arial", "WinBackGround Color=#FFFFFF", "Select Color=#FF0000",
+                 "Select Box Color=#000080", f"Title={expression}", "AutoTitle=Yes", "ShowWin=True", "BackGroundColor=#FFFFFF",
+                 "Grid Color=#808080", "Fore Color=#FFFFFF", "Shadow Color=#C0C0C0", "Auto=True", "Format=5",
+                 f"PMExpression={expression}", ""]
+        self._cir.sections.insert(self._cir._insert_point(), cirmod.Section("Monte Carlo", lines))
+        self._dirty = True
+
     def monte_carlo(self, runs: int = 10, distribution: str = "normal", seed: int = 0, zero_tolerance: bool = False,
                     analysis: str | Sequence[str] | None = None, on: bool = True) -> None:
         """Monte Carlo on/off for the analyses (default all): each analysis then runs ``runs`` times (see ``result.runs``).

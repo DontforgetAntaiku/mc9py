@@ -6,6 +6,10 @@
 - **Offset auto-search** inside MC9 (byte patterns, string anchors, MFC message maps), `tools/sigmaker.py` for other builds.
 - **Many runs:** `Circuit.step`, `stepping_mode`, `clear_steps` (written as MC9's `[Stepping]` sections), temperature lists, Monte Carlo
   (`tolerance`, `monte_carlo`, `model`), run parameters (`run.params`, `result.select`), the optimizer (`optimize`, native engine).
+- **Any MC9 part** in `Netlist`/`Schematic`: definitions are learned from MC9 on first use (`catalog.learn`), placed by the generic placer
+  (transistor-like parts on the signal path, everything else beside the circuit joined by node names), `J`, `JP`, `MP`, `Z`, `E`, `SW` helpers.
+- **`mc9.audio`**: audio power-amplifier coursework (specs -> derived numbers, starter circuit, `Bench` measurements, `report`).
+- `measure.statistics`, `measure.per_run`, `Circuit.histogram`.
 - Curve options (`xrange`, `yrange`, `xlog`, `ylog`, grid, colour), FFT plots; six new MCP tools; `mc9 doctor` checks the DLL.
 
 ## 0.2.1 - 2026-10-25

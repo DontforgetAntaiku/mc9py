@@ -113,3 +113,35 @@ def test_optimizer_needs_native(engine):
         assert float(res["params"]["R1"]["value"]) == pytest.approx(500, rel=0.01)
     finally:
         c.close()
+
+
+def test_new_parts_simulate(engine):
+    """Parts that are not in the built-in set: fetched from MC9, auto-placed, and they simulate."""
+    from mc9 import Netlist, sources
+
+    n = Netlist()
+    n.V("V1", "in", "0", "DC 5")
+    n.R("R1", "in", "out", "1k")
+    n.R("R2", "out", "0", "1k")
+    n.add("VofV", "E1", ["x", "0", "out", "0"], "10")       # a part with four pins, drawn beside the circuit and joined by name
+    n.R("RL", "x", "0", "10k")
+    c = n.build("it_vofv", labels="dc")
+    try:
+        op = c.op()
+        assert op.v("out") == pytest.approx(2.5, abs=1e-3) and op.v("x") == pytest.approx(25.0, abs=1e-2)
+    finally:
+        c.close()
+
+    j = Netlist()
+    j.V("V1", "in", "0", sources.sine(0.1, 1e3))
+    j.C("C1", "in", "g", "1u")
+    j.R("RG", "g", "0", "1Meg")
+    j.J("J1", "d", "g", "s", "J111")
+    j.R("RD", "vdd", "d", "4.7k")
+    j.R("RS", "s", "0", "1k")
+    j.VB("V2", "vdd", "0", "12")
+    c = j.build("it_jfet", labels="dc")
+    try:
+        assert c.op()["J1"]["ID"] == pytest.approx(2.04e-3, rel=0.02)
+    finally:
+        c.close()
