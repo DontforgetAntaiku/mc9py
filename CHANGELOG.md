@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0 - unreleased
+## 0.2.0 - 2026-10-25
 - Windows backend (Win32 API via ctypes), tested by running Windows Python under Wine.
 - Automatic placement: `Netlist` -> placed and routed `Schematic` (backbone + branches, buses, label fallback), verified net-for-net.
 - `Schematic.pin_nets()`, `audit()`, label-aware connectivity (`nets()` joins equal names and all grounds).
