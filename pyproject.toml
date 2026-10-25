@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mc9py"
-version = "0.2.0"
+version = "0.2.1"
 description = "Python scripting layer for Micro-Cap 9: run analyses, read results, take native screenshots and build schematics from code (Linux + Wine, Windows)."
 readme = "README.md"
 requires-python = ">=3.10"
