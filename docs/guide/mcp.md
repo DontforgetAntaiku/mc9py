@@ -9,7 +9,7 @@ MC9's screenshots.
 1. Install with the `mcp` extra, inside the virtual environment from the install page:
 
     ```bash
-    pip install "mc9py[mcp] @ git+https://github.com/DontforgetAntaiku/mc9py.git"
+    pip install "mc9py[mcp]"
     ```
 
 2. Find where the `mc9` program is, because the assistant starts it itself and does not know about your virtual environment:

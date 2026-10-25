@@ -11,12 +11,12 @@ On Windows the library drives your **native** MC9 directly. There is no sandbox,
 ## Steps
 
 1. Install Python 3.10+ and MC9.
-2. mc9py is not on PyPI yet, so install it from GitHub into a virtual environment (PowerShell):
+2. Install mc9py into a virtual environment (PowerShell):
 
     ```powershell
     py -m venv $HOME\mc9-env
     & $HOME\mc9-env\Scripts\Activate.ps1          # repeat this in every new PowerShell window
-    pip install "git+https://github.com/DontforgetAntaiku/mc9py.git"
+    pip install mc9py
     ```
 3. Set your display scaling to **100 %** (Settings -> Display) - the screenshot regions assume it.
 4. `mc9 doctor` - finds `mc9.exe` (usual install folders and `PATH`). If it is somewhere else:

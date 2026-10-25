@@ -62,8 +62,7 @@ Working on an existing lab file? `c = mc9.open("my_lab/amplifier.cir")` copies i
 
 ### Step 1 - install the Python package
 
-You need **Python 3.10 or newer** and **git**. `pip` is Python's package installer; it comes with Python. mc9py is **not on PyPI yet**
-(so `pip install mc9py` does not work yet) - install it straight from GitHub. Use a *virtual environment*, a private folder for
+You need **Python 3.10 or newer** and **git**. `pip` is Python's package installer; it comes with Python. Use a *virtual environment*, a private folder for
 Python packages that keeps your system clean:
 
 <details open><summary><b>Linux / macOS</b></summary>
@@ -71,7 +70,7 @@ Python packages that keeps your system clean:
 ```bash
 python3 -m venv ~/mc9-env                       # create the environment once
 source ~/mc9-env/bin/activate                   # activate it (repeat in every new terminal)
-pip install "git+https://github.com/DontforgetAntaiku/mc9py.git"
+pip install mc9py
 mc9 doctor                                      # prints what is installed and what is missing
 ```
 </details>
@@ -81,15 +80,14 @@ mc9 doctor                                      # prints what is installed and w
 ```powershell
 py -m venv $HOME\mc9-env                        # create the environment once
 & $HOME\mc9-env\Scripts\Activate.ps1            # activate it (repeat in every new terminal)
-pip install "git+https://github.com/DontforgetAntaiku/mc9py.git"
+pip install mc9py
 mc9 doctor
 ```
 </details>
 
 Want `mc9` available in every terminal without activating anything? Use [pipx](https://pipx.pypa.io) instead:
-`pipx install "git+https://github.com/DontforgetAntaiku/mc9py.git"`.
+`pipx install mc9py`.
 For development: `git clone https://github.com/DontforgetAntaiku/mc9py && cd mc9py && pip install -e ".[dev]"`.
-Once the project is published on PyPI, `pip install mc9py` will do the same.
 
 ### Step 2 - connect MC9
 
@@ -159,7 +157,7 @@ the library. You need the `mcp` extra, and the assistant must be able to *start 
 
 ```bash
 # 1. install with the extra (inside your activated environment from Step 1)
-pip install "mc9py[mcp] @ git+https://github.com/DontforgetAntaiku/mc9py.git"
+pip install "mc9py[mcp]"
 
 # 2. find out where the mc9 program lives - you will paste this path below
 which mc9                                   # Windows PowerShell:  (Get-Command mc9).Source

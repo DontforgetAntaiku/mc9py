@@ -15,19 +15,18 @@ prefix are never touched, there is no network access, and nothing pops up on you
 
 ## 2. Python package
 
-mc9py is not on PyPI yet, so `pip install mc9py` does not work; install it from GitHub into a virtual environment
-(a private folder for Python packages, so nothing is installed system-wide):
+Install it into a virtual environment (a private folder for Python packages, so nothing is installed system-wide):
 
 ```bash
 python3 -m venv ~/mc9-env
 source ~/mc9-env/bin/activate            # repeat this in every new terminal
-pip install "git+https://github.com/DontforgetAntaiku/mc9py.git"
+pip install mc9py
 mc9 version
 ```
 
-Alternatives: `pipx install "git+https://github.com/DontforgetAntaiku/mc9py.git"` puts the `mc9` command on your `PATH`
+Alternatives: `pipx install mc9py` puts the `mc9` command on your `PATH`
 without activating anything. For the MCP server for AI assistants add the extra:
-`pip install "mc9py[mcp] @ git+https://github.com/DontforgetAntaiku/mc9py.git"` (see the [MCP guide](../guide/mcp.md)).
+`pip install "mc9py[mcp]"` (see the [MCP guide](../guide/mcp.md)).
 
 ## 3. A Wine prefix with MC9
 
