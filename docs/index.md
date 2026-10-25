@@ -47,6 +47,6 @@ Everything below was produced by scripts - the circuits were placed automaticall
 | Backend | Wine + Xvfb + bubblewrap sandbox | native, Win32 API |
 | Tested | real MC9 (Russian GUAP 9.0.3) | Windows Python under Wine driving MC9; real-Windows reports welcome |
 | UI language | calibrated for the Russian edition, other editions need a [calibration](internals/calibration.md) | independent |
-| Python | 3.10 - 3.13 | 3.10 - 3.13 |
+| Python | 3.10 - 3.14 | 3.10 - 3.14 |
 
 *Micro-Cap is a trademark of Spectrum Software. This project is independent, contains no MC9 code and needs your own licensed copy.*

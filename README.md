@@ -10,7 +10,7 @@
   <a href="https://github.com/DontforgetAntaiku/mc9py/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/DontforgetAntaiku/mc9py/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://DontforgetAntaiku.github.io/mc9py/"><img alt="docs" src="https://img.shields.io/badge/docs-GitHub%20Pages-blue"></a>
   <a href="https://pypi.org/project/mc9py/"><img alt="PyPI" src="https://img.shields.io/pypi/v/mc9py"></a>
-  <img alt="Python" src="https://img.shields.io/badge/python-3.10%E2%80%933.13-blue">
+  <img alt="Python" src="https://img.shields.io/badge/python-3.10%E2%80%933.14-blue">
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-green"></a>
 </p>
 
