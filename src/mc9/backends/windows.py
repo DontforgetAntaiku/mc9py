@@ -15,6 +15,7 @@ import shutil
 import subprocess
 import sys
 import time
+import warnings
 from ctypes import wintypes as wt
 from pathlib import Path
 
@@ -122,10 +123,34 @@ class WindowsDriver(Driver):
     def __init__(self, name: str):
         self.name = name
         cir = workspace.path(name)
-        self.proc = subprocess.Popen([find_mc9(), str(cir)], cwd=str(cir.parent))
+        env = dict(os.environ, MC9HOOK_DIR=str(workspace.exchange())) if config.native else None
+        self.proc = subprocess.Popen([find_mc9(), str(cir)], cwd=str(cir.parent), env=env)
         self.hwnd = self._wait_main_window(config.start_timeout)
         self._place()
         time.sleep(3)
+        self.nat = self._attach_native() if config.native else None
+
+    def _attach_native(self):
+        """Opt-in (config.native): load mc9hook.dll into MC9 so commands can be posted instead of sent as keys."""
+        from .. import native
+        try:
+            folder = native.install()
+            subprocess.run([str(folder / "mc9launch.exe"), "--attach", str(self.proc.pid), str(folder / "mc9hook.dll")],
+                           check=True, capture_output=True, timeout=30)
+            return native.Native(lambda key: (self._focus(), self._key(key.lower())))
+        except Exception as e:  # noqa: BLE001 - optional: keep working with keys
+            warnings.warn(f"native hook not available ({e}); using keys", stacklevel=2)
+            return None
+
+    def _native(self, kind: str) -> bool:
+        if self.nat is None:
+            return False
+        try:
+            return self.nat.invoke(kind)
+        except Exception as e:  # noqa: BLE001
+            warnings.warn(f"native {kind} failed ({e}); using keys", stacklevel=2)
+            self.nat = None
+            return False
 
     # ---- windows -----------------------------------------------------------------------------
     def _windows(self, children_of=None) -> list:
@@ -217,14 +242,16 @@ class WindowsDriver(Driver):
     def open_analysis(self, key: str) -> None:
         self._focus()
         before = set(self._dialogs())
-        self._key(ANALYSIS_KEYS[key])
+        if not self._native(key):
+            self._key(ANALYSIS_KEYS[key])
         time.sleep(3)
         if key in ("dynamic_dc", "dynamic_ac"):
             self._dyn_dialog = self._wait_dialog(before)
 
     def press_run(self) -> None:
         self._focus()
-        self._key("f2")
+        if not self._native("run"):
+            self._key("f2")
         time.sleep(0.5)
 
     def confirm_dynamic(self, key: str) -> None:
@@ -265,7 +292,8 @@ class WindowsDriver(Driver):
 
     def exit_analysis(self) -> None:
         self._focus()
-        self._key("f3")
+        if not self._native("exit"):
+            self._key("f3")
         time.sleep(2)
 
     def prepare_capture(self, schematic: bool) -> None:

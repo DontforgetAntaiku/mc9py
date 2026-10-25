@@ -4,6 +4,23 @@
 clicking. It is experimental: today it finds MC9's functions by itself and answers queries; calling the analysis code directly
 is the next step.
 
+## Use it from the library
+
+```python
+import mc9
+mc9.config.native = True          # default False; the old click/key path is unchanged and is the fallback
+c = mc9.library.rc_lowpass().build("rc")
+c.ac(10, 1e5, 301, ["db(v(out))"])
+```
+
+With `native` on, MC9 is started with the hook loaded. The first time a command is needed (open Transient/AC/DC/Dynamic DC,
+Run, Exit analysis) its accelerator is pressed once and the **command id** MC9 receives is read from the window; the id is saved in
+`settings.json` under the fingerprint of the MC9 build, and later calls post that command straight to MC9's window (`post_cmd`):
+no menu coordinates, no keyboard focus. If anything about the hook fails the run falls back to the old method with a warning.
+Dialog work (the Dynamic DC/AC OK button, the cursor dialog) still uses clicks.
+
+The hook must be built once (`make -C native`, needs `i686-w64-mingw32-gcc`); it is not part of the wheel yet.
+
 ## Offset auto-search
 
 MC9 has no exported API, so every function has to be *found*. Nothing in the DLL contains an address; each build is searched at run time:

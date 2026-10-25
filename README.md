@@ -229,5 +229,6 @@ Please **never** commit MC9 binaries, licence keys, decompiled code or other peo
 `mc9py` is an independent project. **Micro-Cap® is a trademark of Spectrum Software**; this project is not affiliated with, endorsed
 by or sponsored by Spectrum Software, and it **does not contain or distribute MC9** - you need your own licensed copy and must follow its
 license terms. The circuit template bundled with the package holds only the small shape and pin descriptions that MC9 itself writes into
-every circuit it saves. Third-party libraries: [Pillow](https://python-pillow.org) (HPND), [`mcp`](https://github.com/modelcontextprotocol/python-sdk)
+every circuit it saves. The optional native hook (`native/signatures.txt`) stores a few short byte patterns of MC9's code (10-25 bytes each) that are
+needed to locate functions in a running MC9; it contains no program text or data. Third-party libraries: [Pillow](https://python-pillow.org) (HPND), [`mcp`](https://github.com/modelcontextprotocol/python-sdk)
 (MIT, optional), MkDocs Material (MIT, docs only).

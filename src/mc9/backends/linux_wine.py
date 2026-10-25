@@ -12,11 +12,13 @@ import subprocess
 import sys
 import threading
 import time
+import warnings
 from pathlib import Path
 
 from .. import workspace
 from ..config import config
 from ..layout import ANALYSIS_ITEM, L
+from ..native import ACCELERATORS
 from .base import Driver
 
 SB_HOME = "/home/sbx"
@@ -61,7 +63,7 @@ Xvfb :99 -screen 0 __SCREEN__x24 </dev/null >/dev/null 2>&1 &
 export DISPLAY=:99
 sleep 2
 cd /home/sbx/exchange
-wine "__EXE__" "C:\\exchange\\__NAME__.cir" </dev/null >/tmp/w.log 2>&1 &
+__LAUNCH__ </dev/null >/tmp/w.log 2>&1 &
 for i in $(seq 1 60); do xdotool search --name "MC-9" >/dev/null 2>&1 && break; sleep 1; done
 sleep 5
 echo OK
@@ -86,7 +88,14 @@ class Session:
     def __init__(self, name: str):
         exe = (config.mc9_exe or os.environ.get("MC9_EXE") or workspace.settings().get("mc9_exe")
                or r"C:\Program Files (x86)\mc9g\mc9.exe").replace("\\", "\\\\")
-        script = SERVER.replace("__SCREEN__", config.screen).replace("__NAME__", name).replace("__EXE__", exe)
+        circuit = f"C:\\\\exchange\\\\{name}.cir"
+        if config.native:
+            from .. import native
+            native.install()
+            launch = f'wine "C:\\\\exchange\\\\mc9launch.exe" "C:\\\\exchange\\\\mc9hook.dll" "{exe}" "{circuit}"'
+        else:
+            launch = f'wine "{exe}" "{circuit}"'
+        script = SERVER.replace("__SCREEN__", config.screen).replace("__LAUNCH__", launch)
         if sys.platform == "win32" or sys.platform == "darwin":
             raise RuntimeError("the Wine backend needs Linux; on Windows use backend='windows' (the default there)")
         try:
@@ -132,6 +141,24 @@ class LinuxWineDriver(Driver):
         workspace.path(name)
         self.name = name
         self.s = Session(name)
+        self.nat = None
+        if config.native:                      # opt-in: commands go to MC9 directly instead of through menus
+            from .. import native
+            try:
+                self.nat = native.Native(lambda key: self.s.cmd(f"k {key}"))
+            except native.HookError as e:
+                warnings.warn(f"mc9hook is not answering ({e}); falling back to clicks", stacklevel=2)
+
+    def _native(self, kind: str) -> bool:
+        """Try the direct command; False means "do it the old way"."""
+        if self.nat is None:
+            return False
+        try:
+            return self.nat.invoke(kind)
+        except Exception as e:  # noqa: BLE001 - never let the optional path break a run
+            warnings.warn(f"native {kind} failed ({e}); using clicks", stacklevel=2)
+            self.nat = None
+            return False
 
     def _click(self, xy, wait: float = 0.5) -> None:
         self.s.cmd(f"c {xy[0]} {xy[1]}")
@@ -143,10 +170,16 @@ class LinuxWineDriver(Driver):
         self.s.cmd(f"t {text}")
 
     def open_analysis(self, key: str) -> None:
+        if key in ACCELERATORS and self._native(key):
+            time.sleep(5 if key not in ("dynamic_dc", "dynamic_ac") else 3)
+            return
         self._click(L.menu_analysis, 1)
         self._click((L.item_x, L.first_item_y + L.item_dy * ANALYSIS_ITEM[key]), 5 if key not in ("dynamic_dc", "dynamic_ac") else 3)
 
     def press_run(self) -> None:
+        if self._native("run"):
+            time.sleep(0.5)
+            return
         self._click(L.run_button, 0.5)
 
     def confirm_dynamic(self, key: str) -> None:
@@ -164,7 +197,8 @@ class LinuxWineDriver(Driver):
         self._click(L.cursor_close, 1)
 
     def exit_analysis(self) -> None:
-        self.s.cmd("k F3")
+        if not self._native("exit"):
+            self.s.cmd("k F3")
         time.sleep(2)
 
     def prepare_capture(self, schematic: bool) -> None:

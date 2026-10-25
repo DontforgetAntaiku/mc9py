@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+- Experimental native hook (`native/`, `config.native`): `mc9hook.dll` finds MC9's functions at run time (byte patterns, string anchors,
+  MFC message maps) and lets the drivers post commands directly instead of clicking menus.
+
 ## 0.2.1 - 2026-10-25
 - Python 3.14 support (CI and classifiers); `python -m mc9`; install instructions now use PyPI.
 - Copyright holder set to DontforgetAntaiku; MCP setup instructions for beginners.

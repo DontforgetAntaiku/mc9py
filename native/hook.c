@@ -79,6 +79,55 @@ static void resolve_one(Target *t, int use_pattern) {
     }
 }
 
+/* ---- window messages: watch what MC9 receives, send commands the same way a menu would ---- */
+typedef struct { UINT msg; WPARAM wp; LPARAM lp; HWND h; } Event;
+static Event g_log[512];
+static volatile LONG g_nlog;
+static HHOOK g_hook;
+static HWND g_frame;
+
+static BOOL CALLBACK enum_top(HWND h, LPARAM param) {
+    DWORD pid; GetWindowThreadProcessId(h, &pid);
+    if (pid != GetCurrentProcessId() || !IsWindowVisible(h) || GetWindow(h, GW_OWNER)) return TRUE;
+    RECT r; GetWindowRect(h, &r);
+    HWND *best = (HWND *)param; RECT b = {0, 0, 0, 0};
+    if (*best) GetWindowRect(*best, &b);
+    if (!*best || (r.right - r.left) * (r.bottom - r.top) > (b.right - b.left) * (b.bottom - b.top)) *best = h;
+    return TRUE;
+}
+
+static HWND frame(void) {                              /* the biggest visible top-level window of MC9 */
+    if (g_frame && IsWindow(g_frame)) return g_frame;
+    g_frame = NULL;
+    EnumWindows(enum_top, (LPARAM)&g_frame);
+    return g_frame;
+}
+
+static LRESULT CALLBACK watch_proc(int code, WPARAM wp, LPARAM lp) {
+    if (code == HC_ACTION) {
+        const CWPSTRUCT *c = (const CWPSTRUCT *)lp;
+        if ((c->message == WM_COMMAND || c->message == WM_SYSCOMMAND) && c->hwnd == g_frame) {
+            LONG i = InterlockedIncrement(&g_nlog) - 1;
+            if (i < 512) { g_log[i].msg = c->message; g_log[i].wp = c->wParam; g_log[i].lp = c->lParam; g_log[i].h = c->hwnd; }
+        }
+    }
+    return CallNextHookEx(g_hook, code, wp, lp);
+}
+
+static void win_desc(HWND h, char *out) {
+    char cls[64] = "", title[96] = "";
+    GetClassNameA(h, cls, sizeof cls);
+    GetWindowTextA(h, title, sizeof title);
+    RECT r; GetWindowRect(h, &r);
+    put(out, "[%p %s \"%s\" %ldx%ld%s]", (void *)h, cls, title, (long)(r.right - r.left), (long)(r.bottom - r.top), IsWindowVisible(h) ? "" : " hidden");
+}
+
+static BOOL CALLBACK enum_list(HWND h, LPARAM param) {
+    DWORD pid; GetWindowThreadProcessId(h, &pid);
+    if (pid == GetCurrentProcessId()) win_desc(h, (char *)param);
+    return TRUE;
+}
+
 /* ---- commands ---- */
 static void cmd_run(const char *cmd, char *args, char *out) {
     if (!strcmp(cmd, "ping")) { put(out, "pong"); return; }
@@ -131,6 +180,27 @@ static void cmd_run(const char *cmd, char *args, char *out) {
             put(out, "%s=%lx(%s%s)%s", t->name, (unsigned long)r, t->how,
                 !t->expect ? "" : r == t->expect ? ",as-built" : ",MOVED", i + 1 < g_nt ? " " : "");
         }
+        return;
+    }
+    if (!strcmp(cmd, "windows")) { EnumWindows(enum_list, (LPARAM)out); return; }
+    if (!strcmp(cmd, "watch")) {                      /* watch on | off | clear | dump */
+        if (!strcmp(args, "on")) {
+            HWND f = frame(); if (!f) { put(out, "!no window"); return; }
+            g_nlog = 0;
+            if (!g_hook) g_hook = SetWindowsHookExA(WH_CALLWNDPROC, watch_proc, NULL, GetWindowThreadProcessId(f, NULL));
+            put(out, g_hook ? "watching" : "!hook failed");
+        } else if (!strcmp(args, "off")) { if (g_hook) UnhookWindowsHookEx(g_hook); g_hook = NULL; put(out, "off"); }
+        else if (!strcmp(args, "clear")) { g_nlog = 0; put(out, "cleared"); }
+        else {                                        /* dump: msg wParam lParam hwnd, one per event */
+            LONG n = g_nlog < 512 ? g_nlog : 512;
+            for (LONG i = 0; i < n; i++) put(out, "%s%lx:%lx:%lx:%p", i ? " " : "", (unsigned long)g_log[i].msg, (unsigned long)g_log[i].wp, (unsigned long)g_log[i].lp, (void *)g_log[i].h);
+        }
+        return;
+    }
+    if (!strcmp(cmd, "post_cmd")) {                   /* post_cmd <id> : the same WM_COMMAND a menu item or accelerator sends */
+        HWND f = frame(); if (!f) { put(out, "!no window"); return; }
+        PostMessageA(f, WM_COMMAND, MAKEWPARAM((WORD)strtoul(args, NULL, 10), 0), 0);
+        put(out, "posted");
         return;
     }
     put(out, "!unknown command");
