@@ -1,6 +1,5 @@
 """Audio power amplifier coursework: starter circuit, bias tuning and the whole set of measurements (needs MC9; about 30 minutes)."""
 
-import mc9
 from mc9 import audio
 
 # the row of your table: P_out [W], R_load [ohm], R_in [ohm], f_low [Hz], f_high [Hz], THD [%]

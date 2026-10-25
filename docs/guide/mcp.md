@@ -45,6 +45,7 @@ MC9's screenshots.
 | Analyses | `ac_sweep`, `transient`, `dc_sweep`, `operating_point`, `distortion_plot`, `dynamic_dc`, `dynamic_ac` |
 | Plot tools | `place_cursors`, `screenshot`, `exit_analysis` |
 | Measurements | `measure_bandwidth`, `measure_rin`, `measure_rout`, `measure_thd` |
+| Audio amplifier | `amp_design`, `build_power_amplifier`, `amp_measure` |
 | Many runs | `step_parameter`, `clear_steps`, `set_tolerance`, `monte_carlo`, `add_model_text`, `optimize` |
 | Building | `build_schematic` (JSON parts + wires), `build_netlist` (SPICE-like, auto-placed) |
 | Housekeeping | `stop_mc9`, `reset_sandbox` |

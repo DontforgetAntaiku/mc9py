@@ -95,7 +95,8 @@ def power_amplifier(s: Specs, op_amp: str = "LF411", driver=("BD139", "BD140"), 
     cf = 1 / (2 * math.pi * rf * 4 * s.f_high)          # feedback pole at 4 x f_high
     n = Netlist()
     n.V("V1", "in", "0", sources.sine(s.u_in, s.f0))
-    n.R("RIN", "in", "inv", _si(s.r_in))
+    n.C("CIN", "in", "x", _si(1 / (2 * math.pi * s.r_in * s.f_low)))     # the lower -3 dB edge: R_in C_in at f_low
+    n.R("RIN", "x", "inv", _si(s.r_in))
     n.R("RF", "inv", "out", _si(rf))
     n.C("CF", "inv", "out", _si(cf))
     n.R("RG", "0", "pg", _si(1 / (1 / s.r_in + 1 / rf)))             # bias-current balance for the + input
@@ -134,17 +135,20 @@ def schematic(s: Specs, op_amp: str = "LF411", driver=("BD139", "BD140"), power=
     d = Schematic()
     add, W = d.add, d.wire
     v1 = add("V", "V1", sources.sine(s.u_in, s.f0), at=(0, 16), rot=3)
-    rin = add("R", "RIN", _si(s.r_in), at=(6, 10))
+    cin = add("C", "CIN", _si(1 / (2 * math.pi * s.r_in * s.f_low)), at=(4, 10))
+    rin = add("R", "RIN", _si(s.r_in), at=(12, 10))
     u1 = add("OPAMP", "U1", at=(22, 4), MODEL=op_amp)
     add("GND", None, at=(0, 19))
     rg = add("R", "RG", _si(1 / (1 / s.r_in + 1 / rf)), at=(19, -2), rot=1)
     gp = add("GND", None, at=(19, -6), rot=3)
-    W(v1.Plus, rin.Minus)
+    W(v1.Plus, cin.Minus)
+    d.node("in", (2, 10))
+    W(cin.Plus, rin.Minus)
     W(rin.Plus, u1["Minus input"])
     W(v1.Minus, (0, 19))
     W(u1["Plus input"], rg.Plus)
     W(rg.Minus, gp.PinA)
-    d.node("inv", (16, 10))
+    d.node("inv", (20, 10))
     W(u1["VCC"], (26, 0))
     W(u1["VEE"], (26, 14))
     d.node("vp", (26, 0))
@@ -216,9 +220,10 @@ def schematic(s: Specs, op_amp: str = "LF411", driver=("BD139", "BD140"), power=
     cfp = add("C", "CF", _si(cf), at=(26, -14))
     W(rfp.Plus, (40, -18))
     d.node("out", (40, -18))                 # joined to the output by name
-    W(rfp.Minus, (16, -18))
-    W((16, -18), (16, 10))
-    W(cfp.Minus, (16, -14))
+    W(rfp.Minus, (22, -18))                  # joined to the inverting input by name
+    d.node("inv", (22, -18))
+    W(cfp.Minus, (22, -14))
+    W((22, -14), (22, -18))
     W(cfp.Plus, (36, -14))
     W((36, -14), (36, -18))
     # supplies
@@ -244,6 +249,23 @@ def phase_margin_from_peaking(peaking_db: float) -> float | None:
     # Mp = 1 / (2 z sqrt(1 - z^2))  ->  z^2 = (1 - sqrt(1 - 1/Mp^2)) / 2
     z = math.sqrt((1 - math.sqrt(max(0.0, 1 - 1 / mp ** 2))) / 2)
     return math.degrees(math.atan2(2 * z, math.sqrt(math.sqrt(1 + 4 * z ** 4) - 2 * z ** 2)))
+
+
+def edge_time(t: list[float], y: list[float], start: float, end: float) -> float | None:
+    """Time the signal needs to go from level `start` to level `end` (rising or falling): the first crossing of `start`
+    and the next crossing of `end` after it, interpolated linearly. None when the edge is not in the data."""
+    def crossing(level, i0, up):
+        for i in range(i0, len(y) - 1):
+            a, b = y[i] - level, y[i + 1] - level
+            if (a < 0 <= b) if up else (a > 0 >= b):
+                return t[i] + (t[i + 1] - t[i]) * (0 - a) / (b - a), i
+        return None
+    up = end > start
+    first = crossing(start, 0, up)
+    if first is None:
+        return None
+    second = crossing(end, first[1], up)
+    return None if second is None else second[0] - first[0]
 
 
 class Bench:
@@ -297,8 +319,22 @@ class Bench:
             self._shot("ac_gain_phase", True)
         return {"runs": res, "nominal": next((x for x in res if abs(x["temperature"] - 25) < 1e-6), res[0]), "result": r}
 
-    def output_resistance(self, f: float | None = None) -> float:
-        return measure.rout(self.c, f"v({self.out})", load=self.load, f=f or self.s.f0)
+    def output_resistance(self, f: float | None = None, heavy: float = 0.5) -> float:
+        """R_out from two loads, R_L and a heavy `heavy` ohm: R_out = (V1 - V2) / (V2/R2 - V1/R1). A closed-loop amplifier has
+        milliohms, which MC9's 6-digit table cannot show with the load removed - hence the heavy load."""
+        c, f = self.c, f or self.s.f0
+        expr = f"mag(v({self.out}))"
+        lo, hi = max(f / 1000, 1e-3), f * 1000
+        r1 = c.get(self.load, "RESISTANCE")
+        r1v = measure.resmod.parse_value(r1) if isinstance(r1, str) else float(r1)
+        c.set(self.src, "VALUE", sources.sine(self.s.u_in, f))
+        v1 = c.ac(lo, hi, 801, [expr], temp=25).value_at(expr, f)
+        c.set(self.load, "RESISTANCE", heavy)
+        try:
+            v2 = c.ac(lo, hi, 801, [expr], temp=25).value_at(expr, f)
+        finally:
+            c.set(self.load, "RESISTANCE", r1)
+        return (v1 - v2) / (v2 / heavy - v1 / r1v)
 
     # ---- time domain --------------------------------------------------------------------------
     def sine_at(self, f: float, amp: float | None = None, shot: bool = True, temps=None, tag: str = "") -> dict:
@@ -339,10 +375,8 @@ class Bench:
         hi, lo = max(y), min(y)
         span = hi - lo
         l10, l90 = lo + 0.1 * span, lo + 0.9 * span
-        rise = [(a, b) for a, b in zip(r.cross(v, l10, "rise"), r.cross(v, l90, "rise"))]
-        fall = [(a, b) for a, b in zip(r.cross(v, l90, "fall"), r.cross(v, l10, "fall"))]
-        t_r = abs(rise[0][1] - rise[0][0]) if rise else None
-        t_f = abs(fall[0][1] - fall[0][0]) if fall else None
+        t_r = edge_time(r.x, y, l10, l90)
+        t_f = edge_time(r.x, y, l90, l10)
         sr_up = 0.8 * span / t_r if t_r else None
         sr_dn = 0.8 * span / t_f if t_f else None
         mid = sorted(y)[len(y) // 2]
@@ -357,6 +391,7 @@ class Bench:
     def distortion(self, f: float, amp: float | None = None, shot: bool = True) -> dict:
         """THD at f for the given input amplitude (nominal by default); MC9's own harmonic plot is saved too."""
         amp = self.s.u_in if amp is None else amp
+        self._sine(amp, f)                       # the source may still hold a square wave from an earlier measurement
         d = measure.thd(self.c, f, self.src, amp, f"v({self.out})")
         out = {"f": f, "thd_pct": d["thd_pct"], "k_pct": d["k_pct"], "h": d["h"]}
         if shot:
@@ -367,6 +402,7 @@ class Bench:
     def max_power(self, f: float | None = None, thd_limit: float = 10.0, iterations: int = 9) -> dict:
         """Largest output power with THD <= thd_limit (bisection on the input amplitude)."""
         f = f or self.s.f0
+        self._sine(self.s.u_in, f)
         lo, hi = self.s.u_in, self.s.u_in * 2.5
         d_lo = measure.thd(self.c, f, self.src, lo, f"v({self.out})")
         best = d_lo
@@ -412,11 +448,10 @@ class Bench:
             out["i_q_mA"] = {d: op[d]["IC"] * 1e3 for d in self.devices}
         except KeyError:
             pass
-        for sup in self.supplies:
-            try:
-                out[f"i_{sup}"] = op[sup]
-            except KeyError:
-                pass
+        try:
+            out["i_rest"] = sum(abs(op[sup]["ISource"]) for sup in self.supplies)
+        except KeyError:
+            pass
         return out
 
     def tune_quiescent(self, i_q: float = 0.05, parts=("RUP", "RDN"), lo: float = 500.0, hi: float = 1e5) -> float:
@@ -482,11 +517,12 @@ def format_report(r: dict, s: Specs) -> str:
         ("Supply voltage utilisation", "-", _f(r["clipping"]["xi"])),
         ("Slew rate, V/us", "-", _f(r["slew"] / 1e6 if r["slew"] else None)),
         ("Full-power frequency, kHz", "-", _f(r["f_power"] / 1e3 if r["f_power"] else None)),
-        ("Output resistance, ohm", "-", _f(r["r_out"])),
+        ("Output resistance, mohm", "-", _f(r["r_out"] * 1e3)),
         ("Output DC offset, V", "-", _f(r["quiescent"]["v_out_dc"])),
-        ("Supply current at rest / nominal, A", "-", _f(nn["i_supply_mean"])),
+        ("Supply current at rest, A", "-", _f(r["quiescent"].get("i_rest"))),
+        ("Supply current at nominal power, A", "-", _f(nn["i_supply_mean"])),
         ("Efficiency at nominal power", f"{s.efficiency:.2f} (class B)", _f(nn["efficiency"])),
-        ("Phase margin (from peaking), deg", "-", _f(r["phase_margin_est"], "{:.0f}")),
+        ("Phase margin (from peaking), deg", "-", _f(r["phase_margin_est"], "{:.0f}") if r["phase_margin_est"] else "> 65"),
     ]
     if "max_power" in r:
         rows.append(("Max power at THD 10 %, W", "-", _f(r["max_power"]["p_max"])))

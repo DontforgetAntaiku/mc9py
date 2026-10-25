@@ -125,7 +125,7 @@ More in the [Windows page](https://dontforgetantaiku.github.io/mc9py/getting-sta
 | **Coursework** | `mc9.audio`: class-AB audio power amplifier from a table row - derived numbers, starter circuit, and the whole set of measurements (AC/phase, sines at f_low/f0/f_high at 0/25/70 degC, clipping, square waves and slew, THD at 1/10 kHz, max power, Rout, efficiency, dissipation) with MC9's own plots |
 | **Engines** | **native** (default): a small DLL inside MC9 posts MC9's own commands and fills its dialogs - no mouse, no keyboard, no screen coordinates · **clicks**: mouse and keyboard only, used if the DLL cannot start (separate engine, never mixed) |
 | **Platforms** | Linux: sandboxed Wine + Xvfb · Windows: native MC9 (language independent) |
-| **AI** | MCP server with 30 tools (files, analyses, stepping, Monte Carlo, optimizer, cursors, screenshots, measurements, `build_netlist`, `build_schematic`) |
+| **AI** | MCP server with 33 tools (files, analyses, stepping, Monte Carlo, optimizer, cursors, screenshots, measurements, `build_netlist`, `build_schematic`) |
 | **Tooling** | `mc9 setup / doctor / reset / mcp` · 44 offline tests (run on Linux, Windows, macOS CI) · opt-in MC9 integration tests · MkDocs site · GitHub Actions CI |
 
 <p align="center">

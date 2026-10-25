@@ -26,3 +26,21 @@ def test_drawing_matches_the_netlist(p, rl):
     sch = audio.schematic(s)
     assert sch.check() == [], sch.check()
     assert schematic_classes(sch) == netlist_classes(audio.power_amplifier(s))
+
+
+def test_edge_time_of_an_rc_step():
+    import math
+    tau = 1e-6
+    t = [i * 1e-8 for i in range(3000)]
+    up = [1 - math.exp(-x / tau) for x in t]
+    # 10 % -> 90 % of an RC step takes tau * ln 9
+    assert audio.edge_time(t, up, 0.1, 0.9) == pytest.approx(tau * math.log(9), rel=1e-3)
+    down = [math.exp(-x / tau) for x in t]
+    assert audio.edge_time(t, down, 0.9, 0.1) == pytest.approx(tau * math.log(9), rel=1e-3)
+    assert audio.edge_time(t, up, 2.0, 3.0) is None
+
+
+def test_phase_margin_estimate():
+    assert audio.phase_margin_from_peaking(0.0) is None
+    assert 40 < audio.phase_margin_from_peaking(1.0) < 80
+    assert audio.phase_margin_from_peaking(6.0) < audio.phase_margin_from_peaking(1.0)

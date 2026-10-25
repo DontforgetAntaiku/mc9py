@@ -27,6 +27,8 @@ while IFS= read -r line; do
   read -ra a <<< "$line"
   case "${a[0]}" in
     shot) import -window root "/home/sbx/exchange/${a[1]}";;
+    c)  xdotool mousemove ${a[1]} ${a[2]} click 1;;      # diagnostics only (tools/probe_menus.py); the driver never sends input
+    k)  xdotool key "${a[@]:1}";;
     quit) wineserver -k 2>/dev/null; kill %1 2>/dev/null; break;;
   esac
   echo OK

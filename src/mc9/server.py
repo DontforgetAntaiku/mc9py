@@ -9,7 +9,7 @@ import threading
 
 from mcp.server.mcpserver import Image, MCPServer
 
-from . import api, measure, workspace
+from . import api, audio, measure, workspace
 from .netlist import Netlist
 from .schematic import Schematic
 
@@ -288,6 +288,45 @@ def optimize(name: str, params: dict[str, list[float]], goals: list[list], analy
     (kinds: equals | minimize | maximize). At most 4 of each. The found values are applied to the circuit."""
     with _LOCK:
         return _c(name).optimize({k: tuple(v) for k, v in params.items()}, [tuple(g) for g in goals], analysis=analysis)
+
+
+# ---- audio power amplifier (coursework) ------------------------------------------------------------
+_AMPS: dict[str, audio.Specs] = {}
+
+
+@mcp.tool()
+def amp_design(p_out: float, r_load: float, r_in: float, f_low: float, f_high: float, thd: float = 0.5, u_in: float = 1.0) -> dict:
+    """Numbers of a class-AB audio power amplifier: output amplitude/current, gain, supply voltage, class-B efficiency,
+    worst-case dissipation. Units: W, ohm, ohm, Hz, Hz, %, V (amplitude)."""
+    return audio.Specs(p_out, r_load, r_in, f_low, f_high, thd, u_in).summary()
+
+
+@mcp.tool()
+def build_power_amplifier(name: str, p_out: float, r_load: float, r_in: float, f_low: float, f_high: float, thd: float = 0.5,
+                          u_in: float = 1.0) -> str:
+    """Build the starter inverting class-AB amplifier (op-amp + complementary Darlington output stage) as circuit `name`."""
+    with _LOCK:
+        specs = audio.Specs(p_out, r_load, r_in, f_low, f_high, thd, u_in)
+        audio.schematic(specs).build(name, labels="dc").close()
+        _AMPS[name] = specs
+        return name
+
+
+@mcp.tool()
+def amp_measure(name: str, what: str, f: float | None = None) -> dict:
+    """One coursework measurement of an amplifier built by build_power_amplifier: ac | sine (f) | clipping | square (f) |
+    thd (f) | rout | quiescent | max_power | dissipation | tune (bias to 50 mA). MC9's plots are saved as <name>_*.png."""
+    with _LOCK:
+        if name not in _AMPS:
+            raise ValueError(f"{name!r} was not built by build_power_amplifier in this session")
+        b = audio.Bench(_c(name), _AMPS[name])
+        fn = {"ac": lambda: b.ac_response(temps=[0, 25, 70])["runs"], "sine": lambda: b.sine_at(f or _AMPS[name].f0)["runs"],
+              "clipping": b.clipping, "square": lambda: b.square_wave(f or _AMPS[name].f0), "thd": lambda: b.distortion(f or 1e3),
+              "rout": b.output_resistance, "quiescent": b.quiescent, "max_power": b.max_power, "dissipation": b.dissipation,
+              "tune": lambda: b.tune_quiescent(0.05)}
+        if what not in fn:
+            raise ValueError(f"what must be one of {sorted(fn)}")
+        return {"what": what, "result": fn[what]()}
 
 
 @mcp.tool()

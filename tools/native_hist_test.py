@@ -1,4 +1,3 @@
-import copy
 
 import mc9
 from mc9 import cir as cirmod, library
